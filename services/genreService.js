@@ -1,24 +1,53 @@
-const {Genre, Artist} = require ("../models")
+const { createClient } = require("@supabase/supabase-js");
+
+// Инициализация Supabase клиента
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 class genreService {
-    async createGenre({name}) {
-        const genre = await Genre.create({name})
-        return genre;
-    }
-    async getAllGenres() {
-        const genres = await Genre.findAll()
-        return genres
-    }
+  async createGenre({ name }) {
+    const { data: genre, error } = await supabase
+      .from("Genre")
+      .insert([{ name }])
+      .select()
+      .single();
 
-    async getOneGenre({id}) {
-        const genre = await Genre.findOne({where: {id}})
-        return genre
-    }
+      if (error) throw error;
 
-    async getOneGenreByName({name}) {
-        const genre = await Genre.findOne({where: {name}})
-        return genre
-    }
+    return genre;
+  }
+
+  async getAllGenres() {
+    const { data: genres, error } = await supabase.from("Genre").select("*");
+
+    if (error) throw error;
+
+    return genres;
+  }
+
+  async getOneGenre({ id }) {
+    const { data: genre, error } = await supabase
+      .from("Genre")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    return genre;
+  }
+
+  async getOneGenreByName({ name }) {
+    const { data: genre, error } = await supabase
+      .from("Genre")
+      .select("*")
+      .eq("name", name)
+      .single();
+
+    if (error) throw error;
+    return genre;
+  }
 }
 
-module.exports = new genreService()
+module.exports = new genreService();

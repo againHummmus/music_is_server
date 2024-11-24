@@ -12,9 +12,9 @@ const userRoutes = require('./userRoutes')
 router.use('/album', albumRoutes)
 router.use('/artist', artistRoutes)
 router.use('/genre', genreRoutes)
-router.use('/playlist', playlistRoutes)
-router.use('/playlistTrack', playlistTrackRoutes)
-router.use('/track', trackRoutes)
-router.use('/user', userRoutes)
+// router.use('/playlist', playlistRoutes)
+// router.use('/playlistTrack', playlistTrackRoutes)
+// router.use('/track', trackRoutes)
+// router.use('/user', userRoutes)
 
 module.exports = router
