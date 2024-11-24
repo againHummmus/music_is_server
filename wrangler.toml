@@ -1,0 +1,8 @@
+name = "musicis-server"
+type = "javascript" # or modules based on your project needs
+main = "index.js" # This is the entry point
+compatibility_date = "2024-10-30" # Update according to your deployment date
+
+[vars]
+SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlocW5kYm5uZnZkYW91d3NtcWFuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyOTcxMjMwNSwiZXhwIjoyMDQ1Mjg4MzA1fQ.v-ghJJ3wbaKYRRRDaMfVIypDUrwnlZhaTZUx7mEwYL8"
+SUPABASE_URL="https://yhqndbnnfvdaouwsmqan.supabase.co"
