@@ -1,6 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
 
-// Инициализация Supabase клиента
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY

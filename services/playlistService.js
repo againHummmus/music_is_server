@@ -1,24 +1,51 @@
-// const {Playlist} = require ("../models")
+const { createClient } = require('@supabase/supabase-js')
 
-// class playlistService {
-//     async createPlaylist({name, userID}) {
-//         const playlist = await Playlist.create({name, userID})
-//         return playlist
-//     }
-//     async getAllPlaylists() {
-//         const playlists = await Playlist.findAll()
-//         return playlists
-//     }
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_KEY
+  );
 
-//     async getPlaylistsByUser({userID}) {
-//         const playlists = await Playlist.findAll({where: {userID}})
-//         return playlists
-//     }
+class PlaylistService {
+    async createPlaylist({name, userID}) {
+        const { data, error } = await supabase
+            .from('Playlist')
+            .insert([
+                { name, user_id: userID }
+            ])
+            .select()
 
-//     async deletePlaylist({id}) {
-//         const playlist = await Playlist.destroy({where: {id}})
-//         return playlist
-//     }
-// }
+        if (error) throw error
+        return data[0]
+    }
 
-// module.exports = new playlistService()
+    async getAllPlaylists() {
+        const { data, error } = await supabase
+            .from('Playlist')
+            .select('*')
+
+        if (error) throw error
+        return data
+    }
+
+    async getPlaylistsByUser({userID}) {
+        const { data, error } = await supabase
+            .from('Playlist')
+            .select('*')
+            .eq('user_id', userID)
+
+        if (error) throw error
+        return data
+    }
+
+    async deletePlaylist({id}) {
+        const { error } = await supabase
+            .from('Playlist')
+            .delete()
+            .eq('id', id)
+
+        if (error) throw error
+        return true
+    }
+}
+
+module.exports = new PlaylistService()

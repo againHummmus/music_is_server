@@ -1,7 +1,6 @@
 const { createClient } = require('@supabase/supabase-js')
 const uuid = require('uuid')
 
-// Инициализация Supabase клиента
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY
@@ -9,10 +8,8 @@ const supabase = createClient(
 
 class ArtistService {
     async createArtist({ name, image }) {
-        // Генерируем уникальное имя файла
         const fileName = uuid.v4() + '.jpg'
         
-        // Загружаем изображение в Supabase Storage
         const { data: imageData, error: imageError } = await supabase
             .storage
             .from('musicIsStorage/img') 

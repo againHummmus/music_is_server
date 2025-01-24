@@ -1,72 +1,70 @@
-//  const jwt = require('jsonwebtoken')
-// const userService = require("../services/userService")
+const authService = require("../services/userService")
+const ApiError = require("../error/ApiError");
 
-// const generateJwt = (id, email) => {
-//     return jwt.sign(
-//         {id, email},
-//         process.env.SECRET_KEY,
-//         {expiresIn: '24h'}
-//     )
-// }
+class UserController {
+  async signUp(req, res, next) {
+    try {
+      const { email, password, username } = req.body
+      const userData = await authService.signUp({ email, password, username })
+      return res.json(userData)
+    }
+    catch (error) {
+      return next(ApiError.internal("Registration failed"))
+    }
+  }
 
-// class userController {
-//     async registration(req, res) {
-//         const {username, email, password} = req.body
-//         if (!email) {
-//             return {
-//                 success: false,
-//                 message: 'Enter email!',
-//             };
-//         }
-//         if (!password) {
-//             return {
-//                 success: false,
-//                 message: 'Enter password!',
-//             };
-//         }
+  async signIn(req, res, next) {
+    try {
+      const { email, password } = req.body
+      const userData = await authService.signIn({ email, password })
+      return res.json(userData)
+    }
+    catch (error) {
+      return next(ApiError.internal("Login failed"))
+    }
+  }
 
-//         const result = await userService.registration({username, email, password})
-//         return res.json(result)
-//     }
+  async signOut(req, res, next) {
+    try {
+      const result = await authService.signOut()
+      return res.json(result)
+    }
+    catch (error) {
+      return next(ApiError.internal("Logout failed"))
+    }
+  }
 
-//     async login(req, res) {
-//         const {email, password} = req.body
-//         if (!email) {
-//             return {
-//                 success: false,
-//                 message: 'Enter email!',
-//             };
-//         }
-//         if (!password) {
-//             return {
-//                 success: false,
-//                 message: 'Enter password!',
-//             };
-//         }
-//         const result = await userService.login({email, password})
-//         return res.json(result)
-//     }
+  async getUser(req, res, next) {
+    try {
+      const user = await authService.getUser()
+      return res.json(user)
+    }
+    catch (error) {
+      return next(ApiError.internal("Failed to get user data"))
+    }
+  }
 
-//     async check(req, res) {
-//         const token = generateJwt(req.user.id, req.user.email)
-//         return res.json({token})
-//     }
-//     async getOne (req, res) {
-//         const {id} = req.params
-//         const result = await userService.getOneUser({id})
-//         return res.json(result)
-//     }
-//     async updateOne(req, res) {
-//         const { id } = req.params;
-//         const {newUsername} = req.body
-//         const result = await userService.updateOneUser({id, newUsername})
-//         return res.json(result)
-//     }
-//     async delete (req, res) {
-//         const {id} = req.params
-//         const result = await userService.deleteUser({id})
-//         return res.json(result)
-//     }
-// }
+  async resetPassword(req, res, next) {
+    try {
+      const { email } = req.body
+      const result = await authService.resetPassword({ email })
+      return res.json(result)
+    }
+    catch (error) {
+      return next(ApiError.internal("Password reset failed"))
+    }
+  }
 
-// module.exports = new userController()
+  async updatePassword(req, res, next) {
+    try {
+      const { password } = req.body
+      const result = await authService.updatePassword({ password })
+      return res.json(result)
+    }
+    catch (error) {
+      return next(ApiError.internal("Password update failed"))
+    }
+  }
+}
+
+module.exports = new UserController()
