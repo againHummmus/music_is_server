@@ -6,7 +6,7 @@ const fileUpload = require('express-fileupload')
 const path = require('path')
 const router = require('../routes/index')
 const bodyParser = require('body-parser')
-const ErrorMiddleware = require('../middleware/errorHandlingMiddleware')
+const ErrorMiddleware = require('../middlewares/errorHandlingMiddleware')
 
 const app = express()
 
