@@ -4,10 +4,10 @@ const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const fileUpload = require('express-fileupload')
 const path = require('path')
-const router = require('./routes/index')
+const router = require('../routes/index')
 const PORT = process.env.PORT || 5000;
 const bodyParser = require('body-parser');
-const ErrorMiddleware = require('./middleware/errorHandlingMiddleware')
+const ErrorMiddleware = require('../middleware/errorHandlingMiddleware')
 const app = express();
 
 app.use(express.json({limit: '70mb'}));

@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const ErrorMiddleware = require('../error/ErrorMiddleware');
 const tokenService = require('../services/tokenService');
 
