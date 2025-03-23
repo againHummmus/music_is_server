@@ -1,69 +1,79 @@
-const { createClient } = require('@supabase/supabase-js')
-const uuid = require('uuid')
-
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-  );
+const uuid = require("uuid");
+const { createClient } = require("@supabase/supabase-js");
 
 class ArtistService {
-    async createArtist({ name, image }) {
-        const fileName = uuid.v4() + '.jpg'
-        
-        const { data: imageData, error: imageError } = await supabase
-            .storage
-            .from('musicIsStorage/img') 
-            .upload(fileName, image.data, {
-                contentType: 'image/jpeg'
-            })
+  constructor() {
+    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  }
+  async createArtist({ name, image, userId }) {
+    const fileName = uuid.v4() + ".jpg";
 
-        if (imageError) throw imageError
+    const { error: imageError } = await this.supabase.storage
+      .from("musicIsStorage/img")
+      .upload(fileName, image.data, {
+        contentType: "image/jpeg",
+      });
 
-        const { data: artist, error } = await supabase
-            .from('Artist')
-            .insert([
-                { 
-                    name, 
-                    image_hash: fileName 
-                }
-            ])
-            .select()
-            .single()
-
-        if (error) throw error
-        return artist
+    if (imageError) {
+      throw new Error("Error loading image: " + imageError.message);
     }
 
-    async getAllArtists() {
-        const { data: artists, error } = await supabase
-            .from('Artist')
-            .select('*')
+    const { data, error } = await this.supabase
+      .from("Artist")
+      .insert([
+        {
+          name,
+          userId,
+          image_hash: fileName,
+        },
+      ])
+      .select()
+      .single();
 
-        if (error) throw error
-        return artists
+    if (error) {
+      throw new Error(error.message);
     }
 
-    async getOneArtist({id}) {
-        const { data: artist, error } = await supabase
-            .from('Artist')
-            .select('*')
-            .eq('id', id)
-            .single()
+    return data;
+  }
 
-        if (error) throw error
-        return artist
+  async getAllArtists() {
+    const { data, error } = await this.supabase.from("Artist").select("*");
+    console.log(this.formResponse(data, error))
+
+    if (error) {
+      throw new Error(error.message);
     }
+    return data;
+  }
 
-    async getOneArtistByName({name}) {
-        const { data: artist, error } = await supabase
-            .from('Artist')
-            .select('*')
-            .eq('name', name)
-            .single()
+  async getOneArtist({ id }) {
+    const { data, error } = await this.supabase
+      .from("Artist")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-        if (error) throw error
-        return artist
-    }
+      if (error) {
+        throw new Error(error.message);
+      }
+  
+      return data;
+  }
+
+  async getOneArtistByName({ name }) {
+    const { data, error } = await this.supabase
+      .from("Artist")
+      .select("*")
+      .eq("name", name)
+      .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+  
+      return data;
+  }
 }
 
-module.exports = new ArtistService()
+module.exports = new ArtistService();

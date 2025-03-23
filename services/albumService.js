@@ -1,73 +1,94 @@
-const { createClient } = require('@supabase/supabase-js')
-const uuid = require('uuid')
-
-// Инициализация Supabase клиента
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-  );
+const { createClient } = require("@supabase/supabase-js");
+const uuid = require("uuid");
 
 class AlbumService {
-    async createAlbum({name, year, artistID, image}) {
-        const fileName = uuid.v4() + '.jpg'
-        
-        const { data: imageData, error: imageError } = await supabase
-            .storage
-            .from('musicIsStorage/img') 
-            .upload(fileName, image.data, {
-                contentType: 'image/jpeg'
-            })
+  constructor() {
+    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  }
 
-        if (imageError) throw imageError
+  async createAlbum({ name, year, artistId, image }) {
+    const fileName = uuid.v4() + ".jpg";
 
-        // Создаем запись в базе данных
-        const { data: album, error } = await supabase
-            .from('Album')
-            .insert([
-                { 
-                    name, 
-                    year, 
-                    artist_id: artistID, 
-                    image: fileName 
-                }
-            ])
-            .select()
-            .single()
+    const { error: imageError } = await this.supabase.storage
+      .from("musicIsStorage/img")
+      .upload(fileName, image.data, {
+        contentType: "image/jpeg",
+      });
 
-        if (error) throw error
-        return album
+    if (imageError) {
+      throw new Error("Error fetching albums: " + imageError.message);
     }
 
-    async getAllAlbums() {
-        const { data: albums, error } = await supabase
-            .from('Album')
-            .select('*')
+    const { data, error } = await this.supabase
+      .from("Album")
+      .insert([
+        {
+          name,
+          year,
+          artistId,
+          image_hash: fileName,
+        },
+      ])
+      .select()
+      .single();
+    if (error) {
+      throw new Error("Error fetching albums: " + error.message);
+    }
+    return data;
+  }
 
-        if (error) throw error
-        return albums
+  async getAlbums() {
+    const { data, error } = await this.supabase
+      .from("Album")
+      .select("*");
+
+    if (error) {
+      throw new Error("Error fetching albums: " + error.message);
     }
 
-    async getOneAlbum({id}) {
-        const { data: album, error } = await supabase
-            .from('Album')
-            .select('*')
-            .eq('id', id)
-            .single()
+    return data;
+  }
 
-        if (error) throw error
-        return album
+  async getAlbum({ id }) {
+    const { data, error } = await this.supabase
+      .from("Album")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      throw new Error("Error fetching album with id " + id + ": " + error.message);
     }
 
-    async getOneAlbumByName({name}) {
-        const { data: album, error } = await supabase
-            .from('Album')
-            .select('*')
-            .eq('name', name)
-            .single()
+    return data;
+  }
 
-        if (error) throw error
-        return album
+  async getAlbumByName({ name }) {
+    const { data, error } = await this.supabase
+      .from("Album")
+      .select("*")
+      .eq("name", name)
+      .single();
+
+    if (error) {
+      throw new Error("Error fetching album by name " + name + ": " + error.message);
     }
+
+    return data;
+  }
+
+  async getAlbumsByArtistId({ artistId }) {
+    const { data, error } = await this.supabase
+      .from("Album")
+      .select("*")
+      .eq("artistId", artistId);
+
+    if (error) {
+      throw new Error("Error fetching albums for artistId " + artistId + ": " + error.message);
+    }
+
+    return data;
+  }
 }
 
-module.exports = new AlbumService
+module.exports = new AlbumService();

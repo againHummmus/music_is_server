@@ -1,36 +1,58 @@
+const ErrorMiddleware = require("../error/ErrorMiddleware");
 const authService = require("../services/userService")
-const ApiError = require("../error/ApiError");
+const Controller = require("./controller");
+const {validationResult} = require("express-validator")
 
-class UserController {
+
+class userController extends Controller {
   async signUp(req, res, next) {
     try {
+      const errors = validationResult(req);
+      console.log(errors)
+      if (!errors.isEmpty()) {
+        return next(ErrorMiddleware.badRequest('validation error', errors.array()))  
+      }
       const { email, password, username } = req.body
-      const userData = await authService.signUp({ email, password, username })
+      const {avatar} = req.files
+      const userData = await authService.signUp({ res, email, password, username, avatar })
       return res.json(userData)
     }
     catch (error) {
-      return next(ApiError.internal("Registration failed"))
+      return next(ErrorMiddleware.internal(error.message))
     }
   }
 
   async signIn(req, res, next) {
     try {
       const { email, password } = req.body
-      const userData = await authService.signIn({ email, password })
+      const userData = await authService.signIn({ res, email, password })
       return res.json(userData)
     }
     catch (error) {
-      return next(ApiError.internal("Login failed"))
+      return next(ErrorMiddleware.internal(error.message))   
     }
   }
 
   async signOut(req, res, next) {
     try {
-      const result = await authService.signOut()
-      return res.json(result)
+      const { refreshToken } = req.cookies;
+      const token = await authService.signOut(refreshToken);
+      res.clearCookie('refreshToken');
+      return res.json(token);
     }
     catch (error) {
-      return next(ApiError.internal("Logout failed"))
+      return next(ErrorMiddleware.internal(error.message))
+    }
+  }
+
+  async refresh(req, res, next) {
+    try {
+      const { refreshToken } = req.cookies;
+      const userData = await authService.refresh(refreshToken);
+      res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true })
+      return res.json(userData);
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message))
     }
   }
 
@@ -40,18 +62,7 @@ class UserController {
       return res.json(user)
     }
     catch (error) {
-      return next(ApiError.internal("Failed to get user data"))
-    }
-  }
-
-  async resetPassword(req, res, next) {
-    try {
-      const { email } = req.body
-      const result = await authService.resetPassword({ email })
-      return res.json(result)
-    }
-    catch (error) {
-      return next(ApiError.internal("Password reset failed"))
+      return next(ErrorMiddleware.internal(error.message))
     }
   }
 
@@ -62,9 +73,19 @@ class UserController {
       return res.json(result)
     }
     catch (error) {
-      return next(ApiError.internal("Password update failed"))
+      return next(ErrorMiddleware.internal(error.message))
     }
   }
+
+  async activate(req, res, next) {
+    try {
+        const activationLink = req.params.link;
+        await authService.activate(activationLink);
+        return res.redirect(process.env.CLIENT_URL);
+    } catch (e) {
+      return next(ErrorMiddleware.internal(error.message))
+    }
+}
 }
 
-module.exports = new UserController()
+module.exports = new userController()

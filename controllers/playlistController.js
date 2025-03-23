@@ -1,15 +1,16 @@
 const playlistService = require ("../services/playlistService")
-const ApiError = require("../error/ApiError");
+const Controller = require("./controller");
+const ErrorMiddleware = require("../error/ErrorMiddleware");
 
-class playlistController {
+class playlistController extends Controller {
     async create(req, res, next) {
         try {
-            const {name, userID} = req.body
-            const playlist = await playlistService.createPlaylist({name, userID})
+            const {name, creatorId, isPublic} = req.body
+            const playlist = await playlistService.createPlaylist({name, creatorId, isPublic})
             return res.json(playlist)
         }
         catch (error) {
-            return next(ApiError.internal("Internal error"))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
     async getAll(req, res, next) {
@@ -18,7 +19,7 @@ class playlistController {
             return res.json(playlists)
         }
         catch (error) {
-            return next(ApiError.internal("Internal error"))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -29,7 +30,7 @@ class playlistController {
             return res.json(playlists)
         }
         catch (error) {
-            return next(ApiError.internal("Internal error"))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -40,7 +41,7 @@ class playlistController {
             return res.json(playlist)
         }
         catch (error) {
-            return next(ApiError.internal("Internal error"))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 }

@@ -1,7 +1,8 @@
-const ApiError = require("../error/ApiError");
-const genreService = require("../services/genreService")
-const artistService = require("../services/artistService");
-class genreController {
+const Controller = require("./controller");
+const genreService = require("../services/genreService");
+const ErrorMiddleware = require("../error/ErrorMiddleware");
+
+class genreController extends Controller {
     async create(req, res, next) {
         try {
             const {name} = req.body
@@ -9,7 +10,7 @@ class genreController {
             return res.json(genre)
         }
         catch (error) {
-            return next(ApiError.internal("Internal error"))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
     async getAll(req, res, next) {
@@ -19,7 +20,7 @@ class genreController {
         }
         catch(error)
         {
-            return next(ApiError.internal("Internal error"))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -31,7 +32,7 @@ class genreController {
         }
         catch(error) {
             console.error(error);
-            return next(ApiError.internal(("Internal error")))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -43,7 +44,7 @@ class genreController {
         }
         catch(error) {
             console.error(error);
-            return next(ApiError.internal(("Internal error")))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 }

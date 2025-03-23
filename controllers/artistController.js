@@ -1,17 +1,17 @@
+const ErrorMiddleware = require("../error/ErrorMiddleware");
 const artistService = require("../services/artistService");
-const ApiError = require("../error/ApiError");
-const albumService = require("../services/albumService");
+const Controller = require("./controller");
 
-class ArtistController {
+class artistController extends Controller {
     async create(req, res, next) {
         try {
-            const { name } = req.body;
+            const { name, userId } = req.body;
             const { image } = req.files;
-            const artist = await artistService.createArtist({ name, image });
+            const artist = await artistService.createArtist({ name, image, userId });
             return res.json(artist);
         } catch (error) {
             console.error(error);
-            return next(ApiError.internal(('Internal error')));
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -21,7 +21,7 @@ class ArtistController {
             return res.json(artists);
         } catch (error) {
             console.error(error);
-            return next(ApiError.internal(('Internal error')));
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -33,7 +33,7 @@ class ArtistController {
         }
         catch(error) {
             console.error(error);
-            return next(ApiError.internal(("Internal error")))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 
@@ -45,9 +45,9 @@ class ArtistController {
         }
         catch(error) {
             console.error(error);
-            return next(ApiError.internal(("Internal error")))
+            return next(ErrorMiddleware.internal(error.message))
         }
     }
 }
 
-module.exports = new ArtistController();
+module.exports = new artistController();

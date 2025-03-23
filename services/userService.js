@@ -1,391 +1,235 @@
-const { createClient } = require("@supabase/supabase-js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+const uuid = require("uuid");
+const mailService = require("./mailService");
+const tokenService = require("./tokenService");
+const UserDto = require("../dtos/user-dto");
+const { createClient } = require("@supabase/supabase-js");
 
 class AuthService {
-  async signUp({ email, password, username }) {
-    try {
-      const { data: existingUserSameEmail } = await supabase
-        .from("USser")
-        .select("*")
-        .eq("email", email)
-        .single();
+  constructor() {
+    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  }
 
-      if (existingUserSameEmail) {
-        return {
-          error: {
-            status: "400",
-            message: "User with this email already exists",
-          },
-          data: null,
-        };
-      }
+  async signUp({ res, email, password, username, avatar }) {
+    const { data: existingUserSameEmail } = await this.supabase
+      .from("User")
+      .select("*")
+      .eq("email", email)
+      .single();
+    if (existingUserSameEmail) {
+      throw new Error("User with this email already exists");
+    }
 
-      const { data: existingUserSameUserName } = await supabase
-        .from("User")
-        .select("*")
-        .eq("username", username)
-        .single();
+    const { data: existingUserSameUserName } = await this.supabase
+      .from("User")
+      .select("*")
+      .eq("username", username)
+      .single();
+    if (existingUserSameUserName) {
+      throw new Error("User with this username already exists");
+    }
 
-      if (existingUserSameUserName) {
-        return {
-          error: {
-            status: "400",
-            message: "User with this username already exists",
-          },
-          data: null,
-        };
-      }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const activationLink = uuid.v4();
+    const fileName = uuid.v4() + ".jpg";
 
-      // Хэшируем пароль
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Создаем нового пользователя
-      const response = await supabase
-        .from("User")
-        .insert([
-          {
-            email,
-            username,
-            password_hash: hashedPassword,
-          },
-        ])
-        .select();
-
-      console.log(response);
-
-      if (response.error) {
-        return {
-          error: {
-            status: "500",
-            message: error,
-          },
-          data: null,
-        };
-      }
-
-      // Создаем JWT токен
-      // const token = jwt.sign(
-      //   { user_id: response.data[0].id, email },
-      //   process.env.JWT_SECRET,
-      //   { expiresIn: "24h" }
-      // );
-
-      // return {
-      //   error: {
-      //     status: "200",
-      //     message: "Success",
-      //   },
-      //   data: {
-      //     user: data[0],
-      //     token,
-      //   },
-      // };
-    } catch (error) {
-      return {
-        error: {
-          status: "500",
-          message: error.message || "Internal server error",
+    const { data: user, error: userError } = await this.supabase
+      .from("User")
+      .insert([
+        {
+          email,
+          username,
+          password_hash: hashedPassword,
+          activation_link: activationLink,
         },
-        data: null,
-      };
+      ])
+      .select()
+      .single();
+    if (userError) {
+      throw new Error("Error creating user: " + userError.message);
+    }
+
+    const { error: uploadError } = await this.supabase.storage
+      .from("musicIsStorage/img")
+      .upload(fileName, avatar.data, {
+        contentType: "image/jpeg",
+      });
+    if (uploadError) {
+      await this.supabase.from("User").delete().eq("id", user.id);
+      throw new Error("Error uploading avatar: " + uploadError.message);
+    }
+
+    const { data: userProfile, error: userProfileError } = await this.supabase
+      .from("User_profile")
+      .insert([
+        {
+          userId: user.id,
+          avatar_url: fileName,
+        },
+      ])
+      .select()
+      .single();
+    if (userProfileError) {
+      await this.supabase.from("User").delete().eq("id", user.id);
+      throw new Error("Error creating user profile: " + userProfileError.message);
+    }
+
+    try {
+      await mailService.sendActivationLink(
+        email,
+        `${process.env.BASE_URL}/api/user/activate/${activationLink}`
+      );
+      const userDto = new UserDto(user);
+      const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
+      await tokenService.saveToken(userDto.id, refreshToken);
+      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true })
+      return { user, userProfile, accessToken };
+    } catch (e) {
+      await this.supabase.from("User_profile").delete().eq("userId", user.id);
+      await this.supabase.from("User").delete().eq("id", user.id);
+      await this.supabase.storage.from("musicIsStorage/img").remove([fileName]);
+      console.log('error happened here', e)
+      throw new Error(e)
     }
   }
 
-  async signIn({ email, password }) {
+  async signIn({ res, email, password }) {
+    const { data: user, error } = await this.supabase
+      .from("User")
+      .select("*")
+      .eq("email", email)
+      .single();
+    if (error || !user) {
+      throw new Error("User not found");
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      throw new Error("Invalid password");
+    }
+
     try {
-      const { data: user } = await supabase
-        .from("User")
-        .select("*")
-        .eq("email", email)
-        .single();
-
-      if (!user) {
-        return {
-          error: {
-            status: "404",
-            message: "User not found",
-          },
-          data: null,
-        };
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return {
-          error: {
-            status: "401",
-            message: "Invalid password",
-          },
-          data: null,
-        };
-      }
-
-      const token = jwt.sign(
-        { user_id: user.id, email },
-        process.env.JWT_SECRET,
-        { expiresIn: "24h" }
-      );
-
-      return {
-        error: {
-          status: "200",
-          message: "Success",
-        },
-        data: {
-          user,
-          token,
-        },
-      };
-    } catch (error) {
-      return {
-        error: {
-          status: "500",
-          message: error.message || "Internal server error",
-        },
-        data: null,
-      };
+      const userDto = new UserDto(user);
+      const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
+      await tokenService.saveToken(userDto.id, refreshToken);
+      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true })
+      return { user, accessToken };
+    } catch (e) {
+      console.log('error happened here', e)
+      throw new Error(e)
     }
   }
 
   async checkUser(token) {
-    try {
-      if (!token) {
-        return {
-          error: {
-            status: "401",
-            message: "No token provided",
-          },
-          data: null,
-        };
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      const { data: user, error } = await supabase
-        .from("User")
-        .select("*")
-        .eq("id", decoded.user_id)
-        .single();
-
-      if (error || !user) {
-        return {
-          error: {
-            status: "404",
-            message: "User not found",
-          },
-          data: null,
-        };
-      }
-
-      return {
-        error: {
-          status: "200",
-          message: "Success",
-        },
-        data: user,
-      };
-    } catch (error) {
-      return {
-        error: {
-          status: "500",
-          message: error.message || "Internal server error",
-        },
-        data: null,
-      };
-    }
-  }
-
-  async sendResetEmail(email, resetCode) {
-    // Создаём «транспорт» — настройки отправки письма
-    let transporter = nodemailer.createTransport({
-      host: "smtp.mail.ru",
-      port: 465, // Порт шифрованного соединения
-      secure: true, // Используем TLS
-      auth: {
-        user: "musicisinfo@mail.ru", // Ваш полный адрес почты Mail.ru
-        pass: process.env.MAIL_RU_PASSWORD, // Пароль от почты (либо пароль приложения, если включена двухфакторная аутентификация)
-      },
-    });
-
-    // Подготавливаем письмо
-    try {
-      let info = await transporter.sendMail({
-        from: '"Yana" <musicisinfo@mail.ru>', // От кого
-        to: email, // Кому
-        subject: "Тестовое письмо", // Тема письма
-        text: "Привет! Это тестовое письмо.", // Текстовая версия письма
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2>Сброс пароля</h2>
-            <p>Вы запросили сброс пароля. Вот ваш код для сброса:</p>
-            <div style="background-color: #f5f5f5; padding: 10px; margin: 20px 0; text-align: center; font-size: 24px; font-weight: bold;">
-              ${resetCode}
-            </div>
-            <p>Этот код действителен в течение 1 часа.</p>
-            <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
-          </div>
-        `,
-      });
-      console.log(info)
-    } catch (e) {
-      console.log(e);
+    if (!token) {
+      throw new Error("No token provided");
     }
 
-  }
-
-  async resetPassword({ email }) {
+    let decoded;
     try {
-      const { data: user, error } = await supabase
-        .from("User")
-        .select("*")
-        .eq("email", email)
-        .single();
-
-      if (error || !user) {
-        return {
-          error: {
-            status: "404",
-            message: "User not found",
-          },
-          data: null,
-        };
-      }
-
-      const resetCode = Math.random().toString(36).slice(-8);
-      const resetCodeExpires = new Date(Date.now() + 3600000);
-
-      const { error: updateError } = await supabase
-        .from("User")
-        .update({
-          reset_code: resetCode,
-          reset_code_expires: resetCodeExpires,
-        })
-        .eq("id", user.id);
-
-      if (updateError) {
-        return {
-          error: {
-            status: "500",
-            message: "Error updating reset code",
-          },
-          data: null,
-        };
-      }
-
-      try {
-        await this.sendResetEmail(email, resetCode);
-
-        return {
-          error: {
-            status: "200",
-            message: "Reset code has been sent to your email",
-          },
-          data: null,
-        };
-      } catch (emailError) {
-        console.log(emailError);
-        // Если отправка email не удалась, откатываем изменения в базе
-        await supabase
-          .from("User")
-          .update({
-            reset_code: null,
-            reset_code_expires: null,
-          })
-          .eq("id", user.id);
-
-        return {
-          error: {
-            status: "500",
-            message: "Failed to send reset code email",
-          },
-          data: null,
-        };
-      }
-    } catch (error) {
-      return {
-        error: {
-          status: "500",
-          message: error.message || "Internal server error",
-        },
-        data: null,
-      };
+      decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    } catch (err) {
+      throw new Error("Invalid token");
     }
+
+    const { data, error } = await this.supabase
+      .from("User")
+      .select("*")
+      .eq("id", decoded.user_id)
+      .single();
+    if (error) {
+      throw new Error("Error fetching user: " + error.message);
+    }
+
+    return data;
   }
 
   async updatePassword({ email, resetCode, newPassword }) {
-    try {
-      const { data: user, error } = await supabase
-        .from("User")
-        .select("*")
-        .eq("email", email)
-        .eq("reset_code", resetCode)
-        .single();
-
-      if (error || !user) {
-        return {
-          error: {
-            status: "400",
-            message: "Invalid reset code",
-          },
-          data: null,
-        };
-      }
-
-      if (new Date() > new Date(user.reset_code_expires)) {
-        return {
-          error: {
-            status: "400",
-            message: "Reset code has expired",
-          },
-          data: null,
-        };
-      }
-
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-      const { error: updateError } = await supabase
-        .from("User")
-        .update({
-          password: hashedPassword,
-          reset_code: null,
-          reset_code_expires: null,
-        })
-        .eq("id", user.id);
-
-      if (updateError) {
-        return {
-          error: {
-            status: "500",
-            message: "Error updating password",
-          },
-          data: null,
-        };
-      }
-
-      return {
-        error: {
-          status: "200",
-          message: "Password has been updated successfully",
-        },
-        data: null,
-      };
-    } catch (error) {
-      return {
-        error: {
-          status: "500",
-          message: error.message || "Internal server error",
-        },
-        data: null,
-      };
+    const { data: user, error } = await this.supabase
+      .from("User")
+      .select("*")
+      .eq("email", email)
+      .eq("reset_code", resetCode)
+      .single();
+    if (error || !user) {
+      throw new Error("Invalid reset code or user not found");
     }
+
+    if (new Date() > new Date(user.reset_code_expires)) {
+      throw new Error("Reset code has expired");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const { error: updateError } = await this.supabase
+      .from("User")
+      .update({
+        password_hash: hashedPassword,
+        reset_code: null,
+        reset_code_expires: null,
+      })
+      .eq("id", user.id);
+    if (updateError) {
+      throw new Error("Error updating password: " + updateError.message);
+    }
+
+    return { message: "Password has been updated successfully" };
   }
+
+  async activate(activationLink) {
+    const { data: user, error } = await this.supabase
+      .from("User")
+      .select("*")
+      .eq("activation_link", activationLink)
+      .single();
+    if (error || !user) {
+      throw new Error("Incorrect activation link");
+    }
+
+    const { error: updateError } = await this.supabase
+      .from("User")
+      .update({ is_activated: true })
+      .eq("id", user.id);
+    if (updateError) {
+      throw new Error("Error activating account: " + updateError.message);
+    }
+
+    return { message: "Account activated successfully" };
+  }
+
+  async signOut(refreshToken) {
+    const token = await tokenService.removeToken(refreshToken);
+    return token;
+  }
+
+  async refresh(refreshToken) {
+    if (!refreshToken) {
+      throw new Error('No refresh token');
+    }
+
+    const userData = tokenService.validateRefreshToken(refreshToken);
+    const tokenFromDb = await tokenService.findToken(refreshToken);
+    if (!userData || !tokenFromDb) {
+      throw new Error('Error in token validation');
+    }
+
+    const { data: user, error } = await this.supabase
+      .from('User')
+      .select('*')
+      .eq('id', userData.id)
+      .single();
+
+    if (error || !user) {
+      throw new Error(error?.message || 'User not found');
+    }
+
+    const userDto = new UserDto(user);
+    const tokens = tokenService.generateTokens({ ...userDto });
+
+    await tokenService.saveToken(userDto.id, tokens.refreshToken);
+    return { ...tokens, user: userDto };
+  }
+
 }
 
 module.exports = new AuthService();
