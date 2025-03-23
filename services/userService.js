@@ -202,6 +202,15 @@ class AuthService {
     return token;
   }
 
+  async getUser(id) {
+    const user = await this.supabase
+    .from('User')
+    .select('*')
+    .eq('id', id)
+    .single();
+    return user;
+  }
+
   async refresh(refreshToken) {
     if (!refreshToken) {
       throw new Error('No refresh token');

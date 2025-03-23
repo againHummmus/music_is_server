@@ -58,7 +58,8 @@ class userController extends Controller {
 
   async getUser(req, res, next) {
     try {
-      const user = await authService.getUser()
+      const id = req.params.id;
+      const user = await authService.getUser(id)
       return res.json(user)
     }
     catch (error) {

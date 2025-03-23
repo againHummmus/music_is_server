@@ -32,7 +32,7 @@ class TokenService {
     }
 
     async saveToken(userId, refreshToken) {
-        const { data: tokenData, error } = await supabase
+        const { data: tokenData, error } = await this.supabase
             .from('Token')
             .select('*')
             .eq('userId', userId)
@@ -43,7 +43,7 @@ class TokenService {
         }
 
         if (tokenData) {
-            const { data: updatedToken, error: updateError } = await supabase
+            const { data: updatedToken, error: updateError } = await this.supabase
                 .from('Token')
                 .update({ 'refresh_token': refreshToken })
                 .eq('userId', userId)
@@ -54,7 +54,7 @@ class TokenService {
             }
             return updatedToken;
         } else {
-            const { data: newToken, error: insertError } = await supabase
+            const { data: newToken, error: insertError } = await this.supabase
                 .from('Token')
                 .insert([{ userId, 'refresh_token': refreshToken }])
                 .maybeSingle();
@@ -67,7 +67,7 @@ class TokenService {
     }
 
     async removeToken(refreshToken) {
-        const { data, error } = await supabase
+        const { data, error } = await this.supabase
             .from('Token')
             .delete()
             .eq('refresh_token', refreshToken);
@@ -78,7 +78,7 @@ class TokenService {
     }
 
     async findToken(refreshToken) {
-        const { data, error } = await supabase
+        const { data, error } = await this.supabase
             .from('Token')
             .select('*')
             .eq('refresh_token', refreshToken)

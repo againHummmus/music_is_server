@@ -6,7 +6,7 @@ const { body } = require('express-validator')
 router.post('/signup', body('email').isEmail(), body('password').isLength({min: 4}), userController.signUp)
 router.post('/signin', userController.signIn)
 router.post('/signout', userController.signOut)
-router.get('/', userController.getUser)
+router.get('/:id', userController.getUser)
 router.post('/update-password', userController.updatePassword)
 router.get('/activate/:link', userController.activate)
 router.get('/refresh', userController.refresh);
