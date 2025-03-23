@@ -1,8 +1,7 @@
-const jwt = require('jsonwebtoken');
 const ErrorMiddleware = require('../error/ErrorMiddleware');
 const tokenService = require('../services/tokenService');
 
-module.exports = async function (req, res, next) {
+const AuthMiddleware = async function (req, res, next) {
     if (req.method === "OPTIONS") {
         return next();
     }
@@ -22,3 +21,5 @@ module.exports = async function (req, res, next) {
         return next(ErrorMiddleware.unauthorized("Unauthorized"))
     }
 };
+
+module.exports = AuthMiddleware

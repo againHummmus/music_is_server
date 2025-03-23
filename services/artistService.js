@@ -39,7 +39,6 @@ class ArtistService {
 
   async getAllArtists() {
     const { data, error } = await this.supabase.from("Artist").select("*");
-    console.log(this.formResponse(data, error))
 
     if (error) {
       throw new Error(error.message);
