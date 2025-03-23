@@ -2,11 +2,10 @@
   "name": "music_is",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "api/index.js",
   "scripts": {
-    "start": "nodemon ./index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "swagger": "node ./swagger.js"
+    "dev": "vercel dev",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
