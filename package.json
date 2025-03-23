@@ -5,7 +5,7 @@
   "main": "api/index.js",
   "scripts": {
     "dev": "vercel dev",
-    "start": "node server.js"
+    "start": "nodemon ./server.js"
   },
   "keywords": [],
   "author": "",

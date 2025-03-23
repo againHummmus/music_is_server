@@ -1,4 +1,4 @@
-class ErrorMiddleware extends Error{
+class ErrorMiddleware extends Error {
     constructor(status, message) {
         super();
         this.status = status;
