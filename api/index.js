@@ -12,6 +12,10 @@ const app = express()
 
 const allowedOrigins = [
     process.env.CLIENT_URL,
+    "https://www.musicis.ru",
+    "https://music-is.vercel.app/",
+    "https://music-is-againhummmus-projects.vercel.app/",
+    "https://music-is-git-master-againhummmus-projects.vercel.app/",
     "http://localhost:3000"
   ];
 

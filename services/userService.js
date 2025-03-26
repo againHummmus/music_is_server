@@ -76,7 +76,7 @@ class AuthService {
       const userDto = new UserDto(user);
       const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
       await tokenService.saveToken(userDto.id, refreshToken);
-      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true })
+      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "none", secure: true })
       return { user, userProfile, accessToken };
     } catch (e) {
       await this.supabase.from("User_profile").delete().eq("userId", user.id);
@@ -106,7 +106,7 @@ class AuthService {
       const userDto = new UserDto(user);
       const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
       await tokenService.saveToken(userDto.id, refreshToken);
-      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true })
+      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "none", secure: true })
       return { user, accessToken };
     } catch (e) {
       console.log('error happened here', e)

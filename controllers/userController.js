@@ -49,7 +49,7 @@ class userController extends Controller {
     try {
       const { refreshToken } = req.cookies;
       const userData = await authService.refresh(refreshToken);
-      res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true })
+      res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "none", secure: true })
       return res.json(userData);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message))
