@@ -83,7 +83,7 @@ class userController extends Controller {
         const activationLink = req.params.link;
         await authService.activate(activationLink);
         return res.redirect(process.env.CLIENT_URL);
-    } catch (e) {
+    } catch (error) {
       return next(ErrorMiddleware.internal(error.message))
     }
 }

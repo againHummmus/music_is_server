@@ -1,7 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const uuid = require("uuid");
-const mailService = require("./mailService");
 const tokenService = require("./tokenService");
 const UserDto = require("../dtos/user-dto");
 const { createClient } = require("@supabase/supabase-js");
@@ -31,7 +30,6 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const activationLink = uuid.v4();
     const fileName = uuid.v4() + ".jpg";
 
     const { data: user, error: userError } = await this.supabase
@@ -41,7 +39,6 @@ class AuthService {
           email,
           username,
           password_hash: hashedPassword,
-          activation_link: activationLink,
         },
       ])
       .select()
@@ -76,10 +73,6 @@ class AuthService {
     }
 
     try {
-      await mailService.sendActivationLink(
-        email,
-        `${process.env.BASE_URL}/api/user/activate/${activationLink}`
-      );
       const userDto = new UserDto(user);
       const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
       await tokenService.saveToken(userDto.id, refreshToken);

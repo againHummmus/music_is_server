@@ -3,6 +3,27 @@ const mailService = require("../services/mailService");
 const Controller = require("./controller");
 
 class mailController extends Controller {
+
+  async sendActivationLink(req, res, next) {
+    try {
+      const { email } = req.body; 
+      await mailService.sendActivationLink(email);
+      return res.json({ message: "Activation link sent successfully" });
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message));
+    }
+  }
+
+  async sendResetEmail(req, res, next) {
+    try {
+      const { email, resetCode } = req.body;
+      await mailService.sendResetEmail(email, resetCode);
+      return res.json({ message: "Reset email sent successfully" });
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message));
+    }
+  }
+
   async resetPassword(req, res, next) {
     try {
       const { email } = req.body;
@@ -14,4 +35,4 @@ class mailController extends Controller {
   }
 }
 
-module.exports = new mailController()
+module.exports = new mailController();

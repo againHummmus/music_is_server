@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const uuid = require("uuid");
 const { createClient } = require("@supabase/supabase-js");
 
 class MailService {
@@ -15,17 +16,25 @@ class MailService {
     });
   }
 
-  async sendActivationLink(to, link) {
+  async sendActivationLink(email) {
     try {
+      const activationLink = uuid.v4();
+      await this.supabase
+        .from("User")
+        .update({
+          activation_link: activationLink
+        })
+        .eq("email", email);
+
       await this.transporter.sendMail({
         from: `"MusicIs" <${process.env.MAIL_RU_EMAIL_REF}@mail.ru>`,
-        to,
+        to: email,
         subject: "Account Activation on MusicIs",
         text: "",
         html: `
           <div>
             <h1>To activate your account, please follow the link</h1>
-            <a href="${link}">${link}</a>
+            <a href="${`${process.env.BASE_URL}/api/user/activate/${activationLink}`}">${`${process.env.BASE_URL}/api/user/activate/${activationLink}`}</a>
           </div>
         `,
       });
