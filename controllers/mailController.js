@@ -14,16 +14,6 @@ class mailController extends Controller {
     }
   }
 
-  async sendResetEmail(req, res, next) {
-    try {
-      const { email, resetCode } = req.body;
-      await mailService.sendResetEmail(email, resetCode);
-      return res.json({ message: "Reset email sent successfully" });
-    } catch (error) {
-      return next(ErrorMiddleware.internal(error.message));
-    }
-  }
-
   async resetPassword(req, res, next) {
     try {
       const { email } = req.body;

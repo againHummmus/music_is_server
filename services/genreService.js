@@ -19,45 +19,21 @@ class GenreService {
     return data;
   }
 
-  async getAllGenres() {
-    const { data, error } = await this.supabase
-      .from("Genre")
-      .select("*");
-
-    if (error) {
-      throw new Error("Error fetching genres: " + error.message);
+  async searchGenres({ name, limit = 10, offset = 0 }) {
+    let query = this.supabase.from("Genre").select("*");
+  
+    if (name) {
+      query = query.ilike("name", `%${name}%`);
     }
-
+  
+    const { data, error } = await query.range(offset, offset + limit - 1);
+  
+    if (error) {
+      throw new Error(`Error searching genres: ${error.message}`);
+    }
     return data;
   }
-
-  async getOneGenre({ id }) {
-    const { data, error } = await this.supabase
-      .from("Genre")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      throw new Error(`Error fetching genre with id ${id}: ${error.message}`);
-    }
-
-    return data;
-  }
-
-  async getOneGenreByName({ name }) {
-    const { data, error } = await this.supabase
-      .from("Genre")
-      .select("*")
-      .eq("name", name)
-      .single();
-
-    if (error) {
-      throw new Error(`Error fetching genre by name "${name}": ${error.message}`);
-    }
-
-    return data;
-  }
+  
 }
 
 module.exports = new GenreService();

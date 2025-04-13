@@ -18,60 +18,46 @@ class ArtistService {
       throw new Error("Error loading image: " + imageError.message);
     }
 
-    const { data, error } = await this.supabase
+    const { data: artist, error } = await this.supabase
       .from("Artist")
       .insert([
         {
           name,
-          userId,
           image_hash: fileName,
         },
       ])
       .select()
       .single();
-
+    
+    if (!!userId) {
+      await this.supabase
+        .from("User")
+        .update({
+          role: 'artist',
+          artistId: artist.id
+        })
+        .eq("id", userId);
+    }
     if (error) {
       throw new Error(error.message);
     }
 
-    return data;
+    return artist;
   }
 
-  async getAllArtists() {
-    const { data, error } = await this.supabase.from("Artist").select("*");
-
+  async searchArtists({ name, limit = 10, offset = 0 }) {
+    let query = this.supabase.from("Artist").select("*");
+  
+    if (name) {
+      query = query.ilike("name", `%${name}%`);
+    }
+  
+    const { data, error } = await query.range(offset, offset + limit - 1);
+  
     if (error) {
-      throw new Error(error.message);
+      throw new Error("Error searching artists: " + error.message);
     }
     return data;
-  }
-
-  async getOneArtist({ id }) {
-    const { data, error } = await this.supabase
-      .from("Artist")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-  
-      return data;
-  }
-
-  async getOneArtistByName({ name }) {
-    const { data, error } = await this.supabase
-      .from("Artist")
-      .select("*")
-      .eq("name", name)
-      .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-  
-      return data;
   }
 }
 

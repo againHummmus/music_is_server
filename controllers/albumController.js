@@ -15,45 +15,18 @@ class albumController extends Controller {
         }
     }
 
-    async getAll(req, res, next) {
-        try {
-            const data = await albumService.getAlbums()
-            return res.json(data)
-        }
-        catch (error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
 
-    async getOne(req, res, next) {
+    async searchAlbums(req, res, next) {
         try {
-            const {id} = req.params
-            const album = await albumService.getAlbum({id})
-            return res.json(album)
-        }
-        catch(error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
-
-    async getAlbumByName(req, res, next) {
-        try {
-            const {name} = req.params
-            const album = await albumService.getAlbumByName({name})
-            return res.json(album)
-        }
-        catch(error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
-
-    async getAlbumsByArtistId(req, res, next) {
-        try {
-            const { artistId } = req.params;
-            const albums = await albumService.getAlbumsByArtistId({ artistId });
+            const { name, artistId, limit, offset } = req.query;
+            const parsedLimit = limit ? parseInt(limit) : 10;
+            const parsedOffset = offset ? parseInt(offset) : 0;
+            const albums = await albumService.searchAlbums({
+                name: name || '',
+                artistId: artistId || '',
+                limit: parsedLimit,
+                offset: parsedOffset,
+            });
             return res.json(albums);
         } catch (error) {
             return next(ErrorMiddleware.internal(error.message))

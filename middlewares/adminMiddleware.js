@@ -1,18 +1,16 @@
 const ErrorMiddleware = require('../error/ErrorMiddleware');
 const tokenService = require('../services/tokenService');
 
-const AuthMiddleware = async function (req, res, next) {
+const AdminMiddleware = async function (req, res, next) {
     if (req.method === "OPTIONS") {
         return next();
     }
     try {
-        const token = req.headers.authorization.split(' ')[1];
-        console.log(token)
+        const token = req.cookies.accessToken;
         if (!token) {
             return next(ErrorMiddleware.unauthorized("Unauthorized"))
         }
         const user = tokenService.validateAccessToken(token)
-        console.log(user)
         if (user.role !== "admin") {
             return next(ErrorMiddleware.forbidden("Access denied"))
         }
@@ -25,4 +23,4 @@ const AuthMiddleware = async function (req, res, next) {
     }
 };
 
-module.exports = AuthMiddleware
+module.exports = AdminMiddleware

@@ -32,6 +32,20 @@ class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
     const fileName = uuid.v4() + ".jpg";
 
+    const { data: userProfile, error: userProfileError } = await this.supabase
+    .from("User_profile")
+    .insert([
+      {
+        avatar_url: fileName,
+      },
+    ])
+    .select()
+    .single();
+  if (userProfileError) {
+    await this.supabase.from("User").delete().eq("id", user.id);
+    throw new Error("Error creating user profile: " + userProfileError.message);
+  }
+
     const { data: user, error: userError } = await this.supabase
       .from("User")
       .insert([
@@ -39,6 +53,7 @@ class AuthService {
           email,
           username,
           password_hash: hashedPassword,
+          profile_id: userProfile.id,
         },
       ])
       .select()
@@ -57,32 +72,15 @@ class AuthService {
       throw new Error("Error uploading avatar: " + uploadError.message);
     }
 
-    const { data: userProfile, error: userProfileError } = await this.supabase
-      .from("User_profile")
-      .insert([
-        {
-          userId: user.id,
-          avatar_url: fileName,
-        },
-      ])
-      .select()
-      .single();
-    if (userProfileError) {
-      await this.supabase.from("User").delete().eq("id", user.id);
-      throw new Error("Error creating user profile: " + userProfileError.message);
-    }
-
     try {
       const userDto = new UserDto(user);
       const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
       await tokenService.saveToken(userDto.id, refreshToken);
-      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "none", secure: true })
-      return { user, userProfile, accessToken };
+      return { user, userProfile, accessToken, refreshToken };
     } catch (e) {
       await this.supabase.from("User_profile").delete().eq("userId", user.id);
       await this.supabase.from("User").delete().eq("id", user.id);
       await this.supabase.storage.from("musicIsStorage/img").remove([fileName]);
-      console.log('error happened here', e)
       throw new Error(e)
     }
   }
@@ -106,10 +104,8 @@ class AuthService {
       const userDto = new UserDto(user);
       const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
       await tokenService.saveToken(userDto.id, refreshToken);
-      res.cookie('refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: "none", secure: true })
-      return { user, accessToken };
+      return { user, accessToken, refreshToken };
     } catch (e) {
-      console.log('error happened here', e)
       throw new Error(e)
     }
   }
@@ -198,7 +194,7 @@ class AuthService {
   async getUser(id) {
     const user = await this.supabase
     .from('User')
-    .select('*')
+    .select('*, Artist(*), User_profile(*)')
     .eq('id', id)
     .single();
     return user;
@@ -217,7 +213,7 @@ class AuthService {
 
     const { data: user, error } = await this.supabase
       .from('User')
-      .select('*')
+      .select('*, Artist(*), User_profile(*)')
       .eq('id', userData.id)
       .single();
 

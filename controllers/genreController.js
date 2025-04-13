@@ -13,36 +13,18 @@ class genreController extends Controller {
             return next(ErrorMiddleware.internal(error.message))
         }
     }
-    async getAll(req, res, next) {
+    async searchGenres(req, res, next) {
         try {
-            const genres = await genreService.getAllGenres()
+            const { name, limit, offset } = req.query;
+            const parsedLimit = limit ? parseInt(limit) : 10;
+            const parsedOffset = offset ? parseInt(offset) : 0;
+            const genres = await genreService.searchGenres({
+                name: name || '',
+                limit: parsedLimit,
+                offset: parsedOffset,
+            });
             return res.json(genres)
-        }
-        catch(error)
-        {
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
-
-    async getOne(req, res, next) {
-        try {
-            const {id} = req.params
-            const genre = await genreService.getOneGenre({id})
-            return res.json(genre)
-        }
-        catch(error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
-
-    async getOneByName(req, res, next) {
-        try {
-            const {name} = req.params
-            const genre = await genreService.getOneGenreByName({name})
-            return res.json(genre)
-        }
-        catch(error) {
+        } catch (error) {
             console.error(error);
             return next(ErrorMiddleware.internal(error.message))
         }

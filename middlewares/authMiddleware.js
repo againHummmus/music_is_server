@@ -6,20 +6,19 @@ const AuthMiddleware = async function (req, res, next) {
         return next();
     }
     try {
-        const token = req.headers.authorization.split(' ')[1];
+        const token = req.cookies.accessToken;
         if (!token) {
-            return next(ErrorMiddleware.unauthorized("Unauthorized"))
+            return next(ErrorMiddleware.unauthorized("Unauthorized"));
         }
-        const user = tokenService.validateAccessToken(token)
+        const user = tokenService.validateAccessToken(token);
         if (!user) {
-            return next(ErrorMiddleware.unauthorized("Unauthorized"))
+            return next(ErrorMiddleware.unauthorized("Unauthorized"));
         }
         req.user = user;
-
         return next();
     } catch (e) {
-        return next(ErrorMiddleware.unauthorized("Unauthorized"))
+        return next(ErrorMiddleware.unauthorized("Unauthorized"));
     }
 };
 
-module.exports = AuthMiddleware
+module.exports = AuthMiddleware;

@@ -18,6 +18,7 @@ class TokenService {
             const userData = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
             return userData;
         } catch (e) {
+            console.log(e)
             return null;
         }
     }

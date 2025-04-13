@@ -14,16 +14,6 @@ class playlistTrackController extends Controller {
         }
     }
 
-    async getAll(req, res, next) {
-        try {
-            const playlistTracks = await playlistTrackService.getAllPlaylistTrack()
-            return res.json(playlistTracks)
-        }
-        catch (error) {
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
-
     async delete(req, res, next) {
         try {
             const {id} = req.params

@@ -6,7 +6,7 @@ class TrackService {
     this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
   }
 
-  async createTrack({ genreId, artistId, albumId, userId, name, duration, file, lyrics }) {
+  async createTrack({ genreId, artistId, albumId, name, file, lyrics }) {
     const fileStorageName = uuid.v4() + ".mp3";
 
     const { error: uploadError } = await this.supabase.storage
@@ -21,7 +21,7 @@ class TrackService {
     const { data, error } = await this.supabase
       .from("Track")
       .insert([
-        { genreId, artistId, albumId, userId, name, duration, fileName: fileStorageName, lyrics }
+        { genreId, artistId, albumId, name, file_hash: fileStorageName, lyrics }
       ])
       .select();
     if (error) {
@@ -31,93 +31,34 @@ class TrackService {
     return data[0];
   }
 
-  async getAllTracks() {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*");
-    if (error) {
-      throw new Error("Error fetching tracks: " + error.message);
+  async searchTracks({ id, genre, artist, album, likedByUserId, name, limit = 10, offset = 0 }) {
+    let query = this.supabase.from("Track").select("*, Artist(*), Album(*), Genre(*), Track_like(*)");
+  
+    if (id) {
+      query = query.eq("id", id);
     }
-    return data;
-  }
-
-  async getOneTrack({ id }) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .eq("id", id)
-      .single();
-    if (error) {
-      throw new Error("Error fetching track: " + error.message);
+    if (genre) {
+      query = query.eq("genreId", genre);
     }
-    return data;
-  }
-
-  async getTrackById(id) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .eq("id", id)
-      .single();
-    if (error) {
-      throw new Error("Error fetching track by id: " + error.message);
+    if (artist) {
+      query = query.eq("artistId", artist);
     }
-    return data;
-  }
-
-  async getTracksByGenreId(genreId) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .eq("genreId", genreId);
-    if (error) {
-      throw new Error("Error fetching tracks by genre: " + error.message);
+    if (album) {
+      query = query.eq("albumId", album);
     }
-    return data;
-  }
-
-  async getTracksByArtistId(artistId) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .eq("artistId", artistId);
-    if (error) {
-      throw new Error("Error fetching tracks by artist: " + error.message);
+    if (name) {
+      query = query.ilike("name", `%${name}%`);
     }
-    return data;
-  }
-
-  async getTracksByAlbumId(albumId) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .eq("albumId", albumId);
-    if (error) {
-      throw new Error("Error fetching tracks by album: " + error.message);
+    if (likedByUserId) {
+      query = query.select("*, Artist(*), Album(*), Genre(*), Track_like!inner(*)");
+      query = query.eq("Track_like.userId", likedByUserId);
     }
-    return data;
-  }
-
-  async getTracksByUserId(userId) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .eq("userId", userId);
-    if (error) {
-      throw new Error("Error fetching tracks by user: " + error.message);
+  
+    const { data: tracks, error: tracksError } = await query.range(offset, offset + limit - 1);
+    if (tracksError) {
+      throw new Error("Error searching tracks: " + tracksError.message);
     }
-    return data;
-  }
-
-  async getTracksByName(name) {
-    const { data, error } = await this.supabase
-      .from("Track")
-      .select("*")
-      .ilike("name", `%${name}%`);
-    if (error) {
-      throw new Error("Error fetching tracks by name: " + error.message);
-    }
-    return data;
+    return tracks;
   }
 }
 

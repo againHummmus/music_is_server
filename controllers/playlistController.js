@@ -34,6 +34,25 @@ class playlistController extends Controller {
         }
     }
 
+    async searchPlaylists(req, res, next) {
+        try {
+            const { name, creatorId, isPublic, limit, offset } = req.query;
+            const parsedLimit = limit ? parseInt(limit) : 10;
+            const parsedOffset = offset ? parseInt(offset) : 0;
+            const playlists = await genreService.searchGenres({
+                name: name || '',
+                limit: parsedLimit,
+                offset: parsedOffset,
+                creatorId, 
+                is_public: isPublic,
+            });
+            return res.json(playlists)
+        } catch (error) {
+            console.error(error);
+            return next(ErrorMiddleware.internal(error.message))
+        }
+    }
+
     async delete(req, res, next) {
         try {
             const {id} = req.params

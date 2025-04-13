@@ -15,39 +15,23 @@ class artistController extends Controller {
         }
     }
 
-    async getAll(req, res, next) {
+    async searchArtists(req, res, next) {
         try {
-            const artists = await artistService.getAllArtists();
-            return res.json(artists);
+            const { name, limit, offset } = req.query;
+            const parsedLimit = limit ? parseInt(limit) : 10;
+            const parsedOffset = offset ? parseInt(offset) : 0;
+            const artists = await artistService.searchArtists({
+                name: name || '',
+                limit: parsedLimit,
+                offset: parsedOffset,
+            });
+            return res.json(artists)
         } catch (error) {
             console.error(error);
             return next(ErrorMiddleware.internal(error.message))
         }
     }
 
-    async getOne(req, res, next) {
-        try {
-            const {id} = req.params
-            const artist = await artistService.getOneArtist({id})
-            return res.json(artist)
-        }
-        catch(error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
-
-    async getOneByName(req, res, next) {
-        try {
-            const {name} = req.params
-            const artist = await artistService.getOneArtistByName({name})
-            return res.json(artist)
-        }
-        catch(error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
 }
 
 module.exports = new artistController();

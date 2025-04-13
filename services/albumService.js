@@ -31,21 +31,10 @@ class AlbumService {
       ])
       .select()
       .single();
+      
     if (error) {
       throw new Error("Error fetching albums: " + error.message);
     }
-    return data;
-  }
-
-  async getAlbums() {
-    const { data, error } = await this.supabase
-      .from("Album")
-      .select("*");
-
-    if (error) {
-      throw new Error("Error fetching albums: " + error.message);
-    }
-
     return data;
   }
 
@@ -63,28 +52,19 @@ class AlbumService {
     return data;
   }
 
-  async getAlbumByName({ name }) {
-    const { data, error } = await this.supabase
-      .from("Album")
-      .select("*")
-      .eq("name", name)
-      .single();
+  async searchAlbums({ name, artistId, limit = 10, offset = 0 }) {
+    let albumQuery = this.supabase.from("Album").select("*");
 
-    if (error) {
-      throw new Error("Error fetching album by name " + name + ": " + error.message);
+    if (name) {
+      albumQuery = albumQuery.ilike("name", `%${name}%`);
+    } else if (artistId) {
+      albumQuery = albumQuery.eq("artistId", artistId);
     }
 
-    return data;
-  }
-
-  async getAlbumsByArtistId({ artistId }) {
-    const { data, error } = await this.supabase
-      .from("Album")
-      .select("*")
-      .eq("artistId", artistId);
+    const { data, error } = await albumQuery.range(offset, offset + limit - 1);
 
     if (error) {
-      throw new Error("Error fetching albums for artistId " + artistId + ": " + error.message);
+      throw new Error("Error searching albums: " + error.message);
     }
 
     return data;
