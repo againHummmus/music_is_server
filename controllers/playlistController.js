@@ -1,68 +1,68 @@
-const playlistService = require ("../services/playlistService")
+const playlistService = require("../services/playlistService");
 const Controller = require("./controller");
 const ErrorMiddleware = require("../error/ErrorMiddleware");
+const jwt = require("jsonwebtoken");
+const { parse } = require('cookie');
 
 class playlistController extends Controller {
-    async create(req, res, next) {
-        try {
-            const {name, creatorId, isPublic} = req.body
-            const playlist = await playlistService.createPlaylist({name, creatorId, isPublic})
-            return res.json(playlist)
-        }
-        catch (error) {
-            return next(ErrorMiddleware.internal(error.message))
-        }
+  async create(req, res, next) {
+    try {
+      const { name, creatorId, description, isPublic } = req.body;
+      const playlist = await playlistService(req).createPlaylist({
+        name,
+        description,
+        creatorId,
+        isPublic,
+      });
+      return res.json(playlist);
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message));
     }
-    async getAll(req, res, next) {
-        try {
-            const playlists = await playlistService.getAllPlaylists()
-            return res.json(playlists)
-        }
-        catch (error) {
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
+  }
 
-    async getAllByUser(req, res, next) {
-        try {
-            const {userID} = req.params
-            const playlists = await playlistService.getPlaylistsByUser({userID})
-            return res.json(playlists)
-        }
-        catch (error) {
-            return next(ErrorMiddleware.internal(error.message))
-        }
+  async delete(req, res, next) {
+    try {
+      const { id } = req.params;
+      const playlist = await playlistService(req).deletePlaylist({ id });
+      return res.json(playlist);
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message));
     }
+  }
 
-    async searchPlaylists(req, res, next) {
-        try {
-            const { name, creatorId, isPublic, limit, offset } = req.query;
-            const parsedLimit = limit ? parseInt(limit) : 10;
-            const parsedOffset = offset ? parseInt(offset) : 0;
-            const playlists = await genreService.searchGenres({
-                name: name || '',
-                limit: parsedLimit,
-                offset: parsedOffset,
-                creatorId, 
-                is_public: isPublic,
-            });
-            return res.json(playlists)
-        } catch (error) {
-            console.error(error);
-            return next(ErrorMiddleware.internal(error.message))
-        }
-    }
+  async search(req, res, next) {
+    try {
+      const {
+        id,
+        name,
+        creatorId,
+        isPublic,
+        isDefault,
+        limit: limitRaw,
+        offset: offsetRaw,
+      } = req.query;
 
-    async delete(req, res, next) {
-        try {
-            const {id} = req.params
-            const playlist = await playlistService.deletePlaylist({id})
-            return res.json(playlist)
-        }
-        catch (error) {
-            return next(ErrorMiddleware.internal(error.message))
-        }
+      const playlists = await playlistService(req).searchPlaylists({
+        id,
+        name,
+        creatorId,
+        isPublic:
+          isPublic === undefined
+            ? undefined
+            : isPublic === "true" || isPublic === true,
+        isDefault:
+          isDefault === undefined
+              ? undefined
+              : isDefault === "true" || isDefault === true,
+        limit: limitRaw ? parseInt(limitRaw, 10) : undefined,
+        offset: offsetRaw ? parseInt(offsetRaw, 10) : undefined,
+      });
+
+      return res.json(playlists);
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message));
     }
+  }
 }
 
-module.exports = new playlistController()
+module.exports = new playlistController();

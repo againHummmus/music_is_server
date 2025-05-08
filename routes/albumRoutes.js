@@ -4,7 +4,7 @@ const albumController = require('../controllers/albumController')
 const authMiddleware = require('../middlewares/authMiddleware')
 
 
-router.post('/', authMiddleware, albumController.create)
+router.post('/', albumController.create)
 router.get('/', albumController.searchAlbums)
 
 module.exports = router

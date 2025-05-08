@@ -6,12 +6,12 @@ const AdminMiddleware = async function (req, res, next) {
         return next();
     }
     try {
-        const token = req.cookies.accessToken;
+        const token = req.cookies.access_token;
         if (!token) {
             return next(ErrorMiddleware.unauthorized("Unauthorized"))
         }
-        const user = tokenService.validateAccessToken(token)
-        if (user.role !== "admin") {
+        const user = tokenService.validateaccess_token(token)
+        if (user.app_role !== "admin") {
             return next(ErrorMiddleware.forbidden("Access denied"))
         }
         req.user = user;

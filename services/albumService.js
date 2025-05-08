@@ -1,12 +1,13 @@
-const { createClient } = require("@supabase/supabase-js");
 const uuid = require("uuid");
+const Service = require("./service");
+const {supabase} = require('../utils/supabase')
 
 class AlbumService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
-
   async createAlbum({ name, year, artistId, image }) {
+    
     const fileName = uuid.v4() + ".jpg";
 
     const { error: imageError } = await this.supabase.storage
@@ -31,24 +32,9 @@ class AlbumService {
       ])
       .select()
       .single();
-      
     if (error) {
       throw new Error("Error fetching albums: " + error.message);
     }
-    return data;
-  }
-
-  async getAlbum({ id }) {
-    const { data, error } = await this.supabase
-      .from("Album")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      throw new Error("Error fetching album with id " + id + ": " + error.message);
-    }
-
     return data;
   }
 
@@ -57,7 +43,9 @@ class AlbumService {
 
     if (name) {
       albumQuery = albumQuery.ilike("name", `%${name}%`);
-    } else if (artistId) {
+    } 
+    
+    if (artistId) {
       albumQuery = albumQuery.eq("artistId", artistId);
     }
 
@@ -71,4 +59,4 @@ class AlbumService {
   }
 }
 
-module.exports = new AlbumService();
+module.exports = (req) => new AlbumService(req);

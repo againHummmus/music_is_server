@@ -1,51 +1,54 @@
 const ErrorMiddleware = require("../error/ErrorMiddleware");
 const authService = require("../services/userService");
-const Controller = require("./controller");
 const { validationResult } = require("express-validator");
 
-class userController extends Controller {
+class userController {
+
   async signUp(req, res, next) {
     try {
+      const is_prod = process.env.IS_PRODUCTION === 'true';
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return next(ErrorMiddleware.badRequest('validation error', errors.array()));
       }
       const { email, password, username } = req.body;
       const { avatar } = req.files;
-      const userData = await authService.signUp({ res, email, password, username, avatar });
-      res.cookie('refreshToken', userData.refreshToken, { 
+      const userData = await authService(req).signUp({ email, password, username, avatar });
+      res.cookie('refresh_token', userData.session.refresh_token, { 
         maxAge: 30 * 24 * 60 * 60 * 1000, 
-        httpOnly: true, 
-        sameSite: "none", 
-        secure: true 
+        httpOnly: true,
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
       });
-      res.cookie('accessToken', userData.accessToken, { 
+      res.cookie('access_token', userData.session.access_token, { 
         maxAge: 30 * 60 * 1000, 
-        httpOnly: true, 
-        sameSite: "none", 
-        secure: true 
+        httpOnly: true,
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
       });
       return res.json(userData);
     } catch (error) {
-      return next(ErrorMiddleware.internal(error.message));
+      console.log(error)
+      return next(ErrorMiddleware.internal(error));
     }
   }
 
   async signIn(req, res, next) {
     try {
+      const is_prod = process.env.IS_PRODUCTION === 'true';
       const { email, password } = req.body;
-      const userData = await authService.signIn({ res, email, password });
-      res.cookie('refreshToken', userData.refreshToken, { 
+      const userData = await authService(req).signIn({ res, email, password });
+      res.cookie('refresh_token', userData.session.refresh_token, { 
         maxAge: 30 * 24 * 60 * 60 * 1000, 
-        httpOnly: true, 
-        sameSite: "none", 
-        secure: true 
+        httpOnly: true,
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
       });
-      res.cookie('accessToken', userData.accessToken, { 
+      res.cookie('access_token', userData.session.access_token, { 
         maxAge: 30 * 60 * 1000, 
-        httpOnly: true, 
-        sameSite: "none", 
-        secure: true 
+        httpOnly: true,
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
       });
       return res.json(userData);
     } catch (error) {
@@ -55,11 +58,10 @@ class userController extends Controller {
 
   async signOut(req, res, next) {
     try {
-      const { refreshToken } = req.cookies;
-      const token = await authService.signOut(refreshToken);
-      // Очищаем обе куки
-      res.clearCookie('refreshToken');
-      res.clearCookie('accessToken');
+      const { refresh_token } = req.cookies;
+      const token = await authService(req).signOut(refresh_token);
+      res.clearCookie('refresh_token');
+      res.clearCookie('access_token');
       return res.json(token);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
@@ -68,19 +70,22 @@ class userController extends Controller {
 
   async refresh(req, res, next) {
     try {
-      const { refreshToken } = req.cookies;
-      const userData = await authService.refresh(refreshToken);
-      res.cookie('refreshToken', userData.refreshToken, { 
+      const is_prod = process.env.IS_PRODUCTION === 'true';
+
+      const { refresh_token } = req.cookies;
+      if (!refresh_token) return next(ErrorMiddleware.forbidden('no token provided'));
+      const userData = await authService(req).refresh(refresh_token);
+      res.cookie('refresh_token', userData.session.refresh_token, { 
         maxAge: 30 * 24 * 60 * 60 * 1000, 
-        httpOnly: true, 
-        sameSite: "none", 
-        secure: true 
+        httpOnly: true,
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
       });
-      res.cookie('accessToken', userData.accessToken, { 
+      res.cookie('access_token', userData.session.access_token, { 
         maxAge: 30 * 60 * 1000, 
-        httpOnly: true, 
-        sameSite: "none", 
-        secure: true 
+        httpOnly: true,
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
       });
       return res.json(userData.user);
     } catch (error) {
@@ -91,17 +96,31 @@ class userController extends Controller {
   async getUser(req, res, next) {
     try {
       const id = req.params.id;
-      const user = await authService.getUser(id);
+      const user = await authService(req).getUser(id);
       return res.json(user);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
     }
   }
 
+  async me(req, res, next) {
+    try {
+      const { access_token } = req.cookies;
+      if (!access_token) {
+        return res.status(401).json({ error: "No access token provided" });
+      }
+
+      const data = await authService(req).getMe(access_token);
+      return res.json({ data });
+    } catch (error) {
+      return next(ErrorMiddleware.unauthorized(error.message));
+    }
+  }
+
   async updatePassword(req, res, next) {
     try {
       const { password } = req.body;
-      const result = await authService.updatePassword({ password });
+      const result = await authService(req).updatePassword({ password });
       return res.json(result);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
@@ -111,7 +130,7 @@ class userController extends Controller {
   async activate(req, res, next) {
     try {
       const activationLink = req.params.link;
-      await authService.activate(activationLink);
+      await authService(req).activate(activationLink);
       return res.redirect(process.env.CLIENT_URL);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));

@@ -3,14 +3,10 @@ const playlistLikeService = require("../services/playlistLikeService");
 const Controller = require("./controller");
 
 class PlaylistLikeController extends Controller {
-    /**
-     * Создание лайка для плейлиста.
-     * Ожидает в теле запроса поля userId и playlistId.
-     */
     async create(req, res, next) {
         try {
             const { userId, playlistId } = req.body;
-            const playlistLike = await playlistLikeService.createPlaylistLike({ userId, playlistId });
+            const playlistLike = await playlistLikeService(req).createPlaylistLike({ userId, playlistId });
             return res.json(playlistLike);
         }
         catch (error) {
@@ -22,7 +18,7 @@ class PlaylistLikeController extends Controller {
     async search(req, res, next) {
         try {
             const { userId, playlistId, limit, offset } = req.query;
-            const playlistLikes = await playlistLikeService.searchPlaylistLikes({
+            const playlistLikes = await playlistLikeService(req).searchPlaylistLikes({
                 userId,
                 playlistId,
                 limit: limit ? parseInt(limit, 10) : 10,

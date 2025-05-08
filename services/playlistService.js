@@ -1,46 +1,22 @@
-const { createClient } = require("@supabase/supabase-js");
-
+const userPlaylistService = require("../services/userPlaylistService");
+const {supabase} = require('../utils/supabase')
 class PlaylistService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-  }  
-
-  async createPlaylist({ name, creatorId, isPublic }) {
+  constructor(req) {
+    this.req = req;
+    this.supabase = supabase(req);
+  }
+  async createPlaylist({ name, creatorId, description, isPublic, isDefault }) {
     const { data, error } = await this.supabase
       .from("Playlist")
-      .insert([{ name, creatorId, is_public: isPublic }])
-      .select();
+      .insert({ name, Creator: creatorId, description, is_public: isPublic, is_default: isDefault })
+      .select("*, Creator(*), Playlist_track(*)");
+
+    await userPlaylistService(this.req).createUserPlaylist({ userId: creatorId, playlistId: data[0].id, is_creator: true })
 
     if (error) {
       throw new Error("Error creating playlist: " + error.message);
     }
-
     return data[0];
-  }
-
-  async getAllPlaylists() {
-    const { data, error } = await this.supabase
-      .from("Playlist")
-      .select("*");
-
-    if (error) {
-      throw new Error("Error fetching all playlists: " + error.message);
-    }
-
-    return data;
-  }
-
-  async getPlaylistsByUser({ userID }) {
-    const { data, error } = await this.supabase
-      .from("Playlist")
-      .select("*")
-      .eq("creatorId", userID);
-
-    if (error) {
-      throw new Error(`Error fetching playlists for user ${userID}: ${error.message}`);
-    }
-
-    return data;
   }
 
   async deletePlaylist({ id }) {
@@ -52,9 +28,44 @@ class PlaylistService {
     if (error) {
       throw new Error(`Error deleting playlist with id ${id}: ${error.message}`);
     }
+    return data;
+  }
 
+
+  async searchPlaylists({
+    id,
+    name,
+    creatorId,
+    isPublic,
+    isDefault,
+    limit = 10,
+    offset = 0,
+  }) {
+
+    let query = this.supabase.from("Playlist").select('*, "Creator"(*), Playlist_track(*, Track(*, Album(*), Artist(*), Track_like(*)))');
+    if (id) {
+      query = query.eq("id", id);
+    }
+    if (name) {
+      query = query.eq("name", name);
+    }
+    if (creatorId) {
+      query = query.eq("Creator", creatorId);
+    }
+    if (isPublic !== undefined) {
+      query = query.eq("is_public", isPublic);
+    }
+    if (isDefault !== undefined) {
+      query = query.eq("is_default", isDefault);
+    }
+
+    const { data, error } = await query.range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error("Error searching playlists: " + error.message);
+    }
     return data;
   }
 }
 
-module.exports = new PlaylistService();
+module.exports = (req) => new PlaylistService(req);

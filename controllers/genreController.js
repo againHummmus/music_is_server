@@ -6,7 +6,7 @@ class genreController extends Controller {
     async create(req, res, next) {
         try {
             const {name} = req.body
-            const genre = await genreService.createGenre({name})
+            const genre = await genreService(req).createGenre({name})
             return res.json(genre)
         }
         catch (error) {
@@ -18,7 +18,7 @@ class genreController extends Controller {
             const { name, limit, offset } = req.query;
             const parsedLimit = limit ? parseInt(limit) : 10;
             const parsedOffset = offset ? parseInt(offset) : 0;
-            const genres = await genreService.searchGenres({
+            const genres = await genreService(req).searchGenres({
                 name: name || '',
                 limit: parsedLimit,
                 offset: parsedOffset,

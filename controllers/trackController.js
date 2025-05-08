@@ -5,16 +5,16 @@ const Controller = require("./controller");
 class trackController extends Controller {
     async create(req, res, next) {
         try {
-            const { genreId, artistId, albumId, name, lyrics } = req.body;
+            const { genreId, artistId, albumId, name, lyrics, isAddedByUser } = req.body;
             const { file } = req.files;
-    
-            const track = await trackService.createTrack({
+            const track = await trackService(req).createTrack({
                 genreId,
                 artistId,
                 albumId,
                 name,
                 file,
-                lyrics
+                lyrics,
+                isAddedByUser
             });
     
             return res.json(track);
@@ -29,7 +29,7 @@ class trackController extends Controller {
             const parsedLimit = limit ? parseInt(limit) : 10;
             const parsedOffset = offset ? parseInt(offset) : 0;
             
-            const tracks = await trackService.searchTracks({
+            const tracks = await trackService(req).searchTracks({
                 id: id || undefined,
                 genre: genre || undefined,
                 artist: artist || undefined,

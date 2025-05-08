@@ -1,10 +1,10 @@
-const { createClient } = require("@supabase/supabase-js");
+const {supabase} = require('../utils/supabase')
+
 
 class PlaylistTrackService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-  }  
-
+  constructor(req) {
+    this.supabase = supabase(req);
+  }
   async createPlaylistTrack({ trackId, playlistId }) {
     const { data, error } = await this.supabase
       .from("Playlist_track")
@@ -17,17 +17,6 @@ class PlaylistTrackService {
     return data;
   }
 
-  async getAllPlaylistTrack() {
-    const { data, error } = await this.supabase
-      .from("Playlist_track")
-      .select("*");
-
-    if (error) {
-      throw new Error(`Error fetching all playlist tracks: ${error.message}`);
-    }
-    return data;
-  }
-
   async deletePlaylistTrack({ id }) {
     const { data, error } = await this.supabase
       .from("Playlist_track")
@@ -35,22 +24,36 @@ class PlaylistTrackService {
       .match({ id });
 
     if (error) {
-      throw new Error(`Error deleting playlist track with id ${id}: ${error.message}`);
+      throw new Error(
+        `Error deleting playlist track with id ${id}: ${error.message}`
+      );
     }
     return data;
   }
 
-  async getTracksByPlaylist({ playlistID }) {
-    const { data, error } = await this.supabase
-      .from("Playlist_track")
-      .select("*")
-      .eq("playlistId", playlistID);
+  async searchPlaylistTracks({
+    playlistId,
+    trackId,
+    limit = 10,
+    offset = 0,
+  }) {
+    let query = this.supabase.from("Playlist_track").select("*");
 
+    if (playlistId) {
+      query = query.eq("playlistId", playlistId);
+    }
+    if (trackId) {
+      query = query.eq("trackId", trackId);
+    }
+
+    const { data, error } = await query.range(offset, offset + limit - 1);
     if (error) {
-      throw new Error(`Error fetching tracks by playlist ${playlistID}: ${error.message}`);
+      throw new Error(
+        `Error searching playlist tracks: ${error.message}`
+      );
     }
     return data;
   }
 }
 
-module.exports = new PlaylistTrackService();
+module.exports = (req) => new PlaylistTrackService(req);

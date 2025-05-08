@@ -7,7 +7,7 @@ class albumController extends Controller {
         try {
             const { name, year, artistId } = req.body
             const { image } = req.files
-            const data = await albumService.createAlbum({name, year, artistId, image})
+            const data = await albumService(req).createAlbum({name, year, artistId, image})
             return res.json(data)
         }
         catch (error) {
@@ -21,7 +21,7 @@ class albumController extends Controller {
             const { name, artistId, limit, offset } = req.query;
             const parsedLimit = limit ? parseInt(limit) : 10;
             const parsedOffset = offset ? parseInt(offset) : 0;
-            const albums = await albumService.searchAlbums({
+            const albums = await albumService(req).searchAlbums({
                 name: name || '',
                 artistId: artistId || '',
                 limit: parsedLimit,

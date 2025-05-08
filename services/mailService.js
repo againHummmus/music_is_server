@@ -1,10 +1,11 @@
 const nodemailer = require("nodemailer");
 const uuid = require("uuid");
-const { createClient } = require("@supabase/supabase-js");
+const adminService = require("./adminService");
+const {supabase} = require('../utils/supabase')
 
 class MailService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);    
     this.transporter = nodemailer.createTransport({
       host: "smtp.mail.ru",
       port: 465,
@@ -19,12 +20,7 @@ class MailService {
   async sendActivationLink(email) {
     try {
       const activationLink = uuid.v4();
-      await this.supabase
-        .from("User")
-        .update({
-          activation_link: activationLink
-        })
-        .eq("email", email);
+      adminService.updateUserActivationLink(email, activationLink)
 
       await this.transporter.sendMail({
         from: `"MusicIs" <${process.env.MAIL_RU_EMAIL_REF}@mail.ru>`,
@@ -100,4 +96,4 @@ class MailService {
   }
 }
 
-module.exports = new MailService();
+module.exports = (req) => new MailService(req);

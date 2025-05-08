@@ -1,12 +1,11 @@
 const uuid = require("uuid");
-const { createClient } = require("@supabase/supabase-js");
+const {supabase} = require('../utils/supabase')
 
 class TrackService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
-
-  async createTrack({ genreId, artistId, albumId, name, file, lyrics }) {
+  async createTrack({ genreId, artistId, albumId, name, file, lyrics, isAddedByUser }) {
     const fileStorageName = uuid.v4() + ".mp3";
 
     const { error: uploadError } = await this.supabase.storage
@@ -21,9 +20,49 @@ class TrackService {
     const { data, error } = await this.supabase
       .from("Track")
       .insert([
-        { genreId, artistId, albumId, name, file_hash: fileStorageName, lyrics }
+        { genreId, artistId, albumId, name, file_hash: fileStorageName, lyrics, isAddedByUser }
       ])
       .select();
+
+    if (isAddedByUser) {
+      const { data: artist, error: artistError } = await this.supabase
+    .from("Artist")
+    .select("*, User(*)")
+    .eq("id", artistId)
+    .maybeSingle();
+
+      if (artistError) {
+        throw new Error("Error fetching artist: " + artistError.message);
+      }
+      if (artist?.User) {
+
+        const { data: playlist, error: playlistError } = await this.supabase
+          .from("Playlist")
+          .select("id")
+          .eq("is_default", true)
+          .eq("Creator", artist?.User[0].id)
+          .eq("name", "Added by me")
+          .maybeSingle();
+
+        if (playlistError || !playlist) {
+          throw new Error("Error finding default playlist: " + playlistError?.message);
+        }
+
+        const { error: upsertError } = await this.supabase
+          .from("Playlist_track")
+          .upsert(
+            {
+              trackId: data[0].id,
+              playlistId: playlist.id,
+            },
+          );
+
+        if (upsertError) {
+          throw new Error("Error upserting Playlist_track: " + upsertError.message);
+        }
+      }
+
+    }
     if (error) {
       throw new Error("Error creating track: " + error.message);
     }
@@ -62,4 +101,4 @@ class TrackService {
   }
 }
 
-module.exports = new TrackService();
+module.exports = (req) => new TrackService(req);

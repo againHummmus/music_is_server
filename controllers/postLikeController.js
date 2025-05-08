@@ -7,7 +7,7 @@ class PostLikeController extends Controller {
   async create(req, res, next) {
     try {
       const { userId, postId } = req.body;
-      const postLike = await postLikeService.createPostLike({ userId, postId });
+      const postLike = await postLikeService(req).createPostLike({ userId, postId });
       return res.json(postLike);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
@@ -17,7 +17,7 @@ class PostLikeController extends Controller {
   async search(req, res, next) {
     try {
       const { userId, postId, limit, offset } = req.query;
-      const postLikes = await postLikeService.searchPostLikes({
+      const postLikes = await postLikeService(req).searchPostLikes({
         userId,
         postId,
         limit: limit ? parseInt(limit, 10) : 10,

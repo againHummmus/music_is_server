@@ -1,12 +1,11 @@
 const uuid = require("uuid");
-const { createClient } = require("@supabase/supabase-js");
-
+const {supabase} = require('../utils/supabase')
 class ArtistService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
   async createArtist({ name, image, userId }) {
-    const fileName = uuid.v4() + ".jpg";
+    try {const fileName = uuid.v4() + ".jpg";
 
     const { error: imageError } = await this.supabase.storage
       .from("musicIsStorage/img")
@@ -33,7 +32,7 @@ class ArtistService {
       await this.supabase
         .from("User")
         .update({
-          role: 'artist',
+          app_role: 'artist',
           artistId: artist.id
         })
         .eq("id", userId);
@@ -43,6 +42,9 @@ class ArtistService {
     }
 
     return artist;
+  } catch(e) {
+    console.log(e)
+  }
   }
 
   async searchArtists({ name, limit = 10, offset = 0 }) {
@@ -61,4 +63,4 @@ class ArtistService {
   }
 }
 
-module.exports = new ArtistService();
+module.exports = (req) => new ArtistService(req);

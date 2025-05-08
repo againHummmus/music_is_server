@@ -1,10 +1,10 @@
-const { createClient } = require("@supabase/supabase-js");
+const {supabase} = require('../utils/supabase')
+
 
 class PostLikeService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
-
   async createPostLike({ userId, postId }) {
     const { data: postLike, error } = await this.supabase
       .from("PostLike")
@@ -43,4 +43,4 @@ class PostLikeService {
   }
 }
 
-module.exports = new PostLikeService();
+module.exports = (req) => new PostLikeService(req);

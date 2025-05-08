@@ -9,6 +9,7 @@ router.post('/signout', userController.signOut)
 router.get('/:id', userController.getUser)
 router.post('/update-password', userController.updatePassword)
 router.get('/activate/:link', userController.activate)
+router.post('/me', userController.me)
 router.post('/refresh', userController.refresh);
 
 module.exports = router

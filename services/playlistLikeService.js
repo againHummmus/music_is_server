@@ -1,10 +1,8 @@
-const { createClient } = require("@supabase/supabase-js");
-
+const {supabase} = require('../utils/supabase')
 class PlaylistLikeService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
-
   async createPlaylistLike({ userId, playlistId }) {
     const { data: playlistLike, error } = await this.supabase
       .from("PlaylistLike")
@@ -43,4 +41,4 @@ class PlaylistLikeService {
   }
 }
 
-module.exports = new PlaylistLikeService();
+module.exports = (req) => new PlaylistLikeService(req);

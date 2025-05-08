@@ -1,11 +1,9 @@
-const { createClient } = require("@supabase/supabase-js");
+const {supabase} = require('../utils/supabase')
 
 class TrackLikeService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
-
-
   async createTrackLike({ userId, trackId }) {
     const { data: trackLike, error } = await this.supabase
       .from("Track_like")
@@ -17,7 +15,24 @@ class TrackLikeService {
       ])
       .select()
       .single();
-    
+
+    const { data: playlist, error: playlistError } = await this.supabase
+      .from("Playlist")
+      .select("*")
+      .eq("is_default", true)
+      .eq("Creator", userId)
+      .eq("name", "Favourite")
+
+
+    await this.supabase
+      .from("Playlist_track")
+      .upsert([
+        {
+          trackId: trackId,
+          playlistId: playlist[0].id,
+        },
+      ])
+
     if (error) {
       throw new Error("Error creating track like: " + error.message);
     }
@@ -51,11 +66,33 @@ class TrackLikeService {
       .eq("trackId", trackId)
       .select()
       .single();
+
+      const { data: playlist, error: playlistError } = await this.supabase
+      .from("Playlist")
+      .select("*")
+      .eq("is_default", true)
+      .eq("Creator", userId)
+      .eq("name", "Favourite")
+
+
+      const {error: deleteError} = await this.supabase
+      .from('Playlist_track')
+      .delete()
+      .eq('trackId', trackId)
+      .eq('playlistId', playlist[0].id);
+
     if (error) {
       throw new Error("Error deleting track like: " + error.message);
+    }
+    if (playlistError) {
+      throw new Error("Error deleting track like: " + playlistError.message);
+    }
+
+    if (deleteError) {
+      throw new Error("Error deleting track like: " + deleteError.message);
     }
     return data;
   }
 }
 
-module.exports = new TrackLikeService();
+module.exports = (req) => new TrackLikeService(req);

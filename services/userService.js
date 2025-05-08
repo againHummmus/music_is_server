@@ -1,138 +1,140 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const uuid = require("uuid");
 const tokenService = require("./tokenService");
-const UserDto = require("../dtos/user-dto");
-const { createClient } = require("@supabase/supabase-js");
+const { supabase } = require('../utils/supabase')
+const { supabaseAdmin } = require('../utils/supabase')
+const uuid = require("uuid");
 
 class AuthService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
+  async signUp({ email, password, username, avatar }) {
+    let authUser, userProfile, user, playlists;
+    const fileName = uuid.v4() + '.jpg';
 
-  async signUp({ res, email, password, username, avatar }) {
-    const { data: existingUserSameEmail } = await this.supabase
-      .from("User")
-      .select("*")
-      .eq("email", email)
-      .single();
-    if (existingUserSameEmail) {
-      throw new Error("User with this email already exists");
-    }
+    try {
+      const { data: au, error: ae } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { username },
+      });
+      if (ae) throw new Error('Error creating auth user: ' + ae.message);
+      authUser = au;
 
-    const { data: existingUserSameUserName } = await this.supabase
-      .from("User")
-      .select("*")
-      .eq("username", username)
-      .single();
-    if (existingUserSameUserName) {
-      throw new Error("User with this username already exists");
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const fileName = uuid.v4() + ".jpg";
-
-    const { data: userProfile, error: userProfileError } = await this.supabase
-    .from("User_profile")
-    .insert([
-      {
-        avatar_url: fileName,
-      },
-    ])
-    .select()
-    .single();
-  if (userProfileError) {
-    await this.supabase.from("User").delete().eq("id", user.id);
-    throw new Error("Error creating user profile: " + userProfileError.message);
-  }
-
-    const { data: user, error: userError } = await this.supabase
-      .from("User")
-      .insert([
-        {
+      const hashed = await bcrypt.hash(password, 10);
+      const { data: u, error: ue } = await supabaseAdmin
+        .from('User')
+        .insert({
+          id: authUser.id,
           email,
           username,
-          password_hash: hashedPassword,
+          password_hash: hashed,
           profile_id: userProfile.id,
-        },
-      ])
-      .select()
-      .single();
-    if (userError) {
-      throw new Error("Error creating user: " + userError.message);
-    }
+          avatar_url: avatar ? fileName : null
+        })
+        .select('*, Artist(*)')
+        .single();
+      if (ue) throw new Error('Error creating user record: ' + ue.message);
+      user = u;
 
-    const { error: uploadError } = await this.supabase.storage
-      .from("musicIsStorage/img")
-      .upload(fileName, avatar.data, {
-        contentType: "image/jpeg",
-      });
-    if (uploadError) {
-      await this.supabase.from("User").delete().eq("id", user.id);
-      throw new Error("Error uploading avatar: " + uploadError.message);
-    }
+      if (avatar) {
+        const { error: ie } = await supabaseAdmin
+          .storage
+          .from('musicIsStorage/img')
+          .upload(fileName, avatar.data, { contentType: avatar.mimetype });
+        if (ie) throw new Error('Error uploading avatar: ' + ie.message);
+      }
 
-    try {
-      const userDto = new UserDto(user);
-      const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
-      await tokenService.saveToken(userDto.id, refreshToken);
-      return { user, userProfile, accessToken, refreshToken };
-    } catch (e) {
-      await this.supabase.from("User_profile").delete().eq("userId", user.id);
-      await this.supabase.from("User").delete().eq("id", user.id);
-      await this.supabase.storage.from("musicIsStorage/img").remove([fileName]);
-      throw new Error(e)
-    }
-  }
+      const playlistInserts = [
+        { name: 'Favourite', Creator: user.id, description: 'Your favorite tracks', is_public: false, is_default: true },
+        { name: 'Added by me', Creator: user.id, description: "Tracks where you're the author", is_public: false, is_default: true },
+        { name: 'Recommendations', Creator: user.id, description: 'Tracks you may like', is_public: false, is_default: true },
+        { name: 'Your friends like this', Creator: user.id, description: 'Tracks your friends listen to', is_public: false, is_default: true },
+      ];
+      const { data: pls, error: ple } = await supabaseAdmin
+        .from('Playlist')
+        .insert(playlistInserts)
+        .select();
+      if (ple) throw new Error('Error creating playlists: ' + ple.message);
+      playlists = pls;
 
-  async signIn({ res, email, password }) {
-    const { data: user, error } = await this.supabase
-      .from("User")
-      .select("*")
-      .eq("email", email)
-      .single();
-    if (error || !user) {
-      throw new Error("User not found");
-    }
+      const recs = playlists.find(pl => pl.name === 'Recommendations');
+      await this.fillRecommendations({ playlistId: recs.id });
 
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      throw new Error("Invalid password");
-    }
+      const { data: sd, error: se } = await this.supabase.auth.signInWithPassword({ email, password });
+      if (se) throw new Error('Error signing in after signup: ' + se.message);
 
-    try {
-      const userDto = new UserDto(user);
-      const { refreshToken, accessToken } = tokenService.generateTokens({ ...userDto });
-      await tokenService.saveToken(userDto.id, refreshToken);
-      return { user, accessToken, refreshToken };
-    } catch (e) {
-      throw new Error(e)
-    }
-  }
+      return { user, userProfile, session: sd.session };
 
-  async checkUser(token) {
-    if (!token) {
-      throw new Error("No token provided");
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     } catch (err) {
-      throw new Error("Invalid token");
+      if (playlists) {
+        const ids = playlists.map(pl => pl.id);
+        await supabaseAdmin.from('Playlist').delete().in('id', ids).catch(() => { });
+      }
+      if (user) {
+        await supabaseAdmin.from('User').delete().eq('id', user.id).catch(() => { });
+      }
+      if (authUser) {
+        await supabaseAdmin.auth.admin.deleteUser(authUser.id).catch(() => { });
+        if (avatar) {
+          await supabaseAdmin.storage.from('musicIsStorage/img').remove([fileName]).catch(() => { });
+        }
+      }
+      throw err;
     }
+  }
 
-    const { data, error } = await this.supabase
+  async signIn({ email, password }) {
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+    const { data: user } = await supabaseAdmin
+      .from('User')
+      .select('*, Artist(*)')
+      .eq('sbUserId', data.user.id)
+      .single();
+
+    if (!!error) {
+      throw new Error('Sign-in failed: ' + error);
+    }
+    return { user, session: data.session };
+  }
+
+  async getMe(access_token) {
+    const { data, error: userErr } = await supabaseAdmin.auth.getUser(access_token);
+    if (userErr) {
+      throw new Error('Failed to fetch auth user: ' + userErr.message);
+    }
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from('User')
+      .select('*, Artist(*)')
+      .eq('sbUserId', data.user.id)
+      .single();
+    if (profileErr) {
+      throw new Error('Failed to fetch user profile: ' + profileErr.message);
+    }
+    return profile;
+  }
+
+  async refresh(refresh_token) {
+    const { data, error } = await supabaseAdmin.auth.refreshSession({ refresh_token });
+    const { data: user, error: userError } = await supabaseAdmin
       .from("User")
-      .select("*")
-      .eq("id", decoded.user_id)
+      .select('*, Artist(*)')
+      .eq("sbUserId", data.user.id)
       .single();
     if (error) {
       throw new Error("Error fetching user: " + error.message);
     }
-
-    return data;
+    if (userError) {
+      throw new Error('Failed to refresh session: ' + userError.message);
+    }
+    return { session: data.session, user };
   }
+
 
   async updatePassword({ email, resetCode, newPassword }) {
     const { data: user, error } = await this.supabase
@@ -166,7 +168,7 @@ class AuthService {
   }
 
   async activate(activationLink) {
-    const { data: user, error } = await this.supabase
+    const { data: user, error } = await supabaseAdmin
       .from("User")
       .select("*")
       .eq("activation_link", activationLink)
@@ -175,7 +177,7 @@ class AuthService {
       throw new Error("Incorrect activation link");
     }
 
-    const { error: updateError } = await this.supabase
+    const { error: updateError } = await supabaseAdmin
       .from("User")
       .update({ is_activated: true })
       .eq("id", user.id);
@@ -186,48 +188,26 @@ class AuthService {
     return { message: "Account activated successfully" };
   }
 
-  async signOut(refreshToken) {
-    const token = await tokenService.removeToken(refreshToken);
+  async signOut(refresh_token) {
+    const token = await tokenService.removeToken(refresh_token);
     return token;
   }
 
   async getUser(id) {
     const user = await this.supabase
-    .from('User')
-    .select('*, Artist(*), User_profile(*)')
-    .eq('id', id)
-    .single();
+      .from('User')
+      .select('*, Artist(*)')
+      .eq('id', id)
+      .single();
     return user;
   }
 
-  async refresh(refreshToken) {
-    if (!refreshToken) {
-      throw new Error('No refresh token');
-    }
-
-    const userData = tokenService.validateRefreshToken(refreshToken);
-    const tokenFromDb = await tokenService.findToken(refreshToken);
-    if (!userData || !tokenFromDb) {
-      throw new Error('Error in token validation');
-    }
-
-    const { data: user, error } = await this.supabase
-      .from('User')
-      .select('*, Artist(*), User_profile(*)')
-      .eq('id', userData.id)
-      .single();
-
-    if (error || !user) {
-      throw new Error(error?.message || 'User not found');
-    }
-
-    const userDto = new UserDto(user);
-    const tokens = tokenService.generateTokens({ ...userDto });
-
-    await tokenService.saveToken(userDto.id, tokens.refreshToken);
-    return { ...tokens, user: userDto };
+  async signOut() {
+    await this.supabase.auth.signOut();
+    await supabaseAdmin.auth.admin.disableUser((await this.supabase.auth.getUser()).data.user.id);
+    return { message: 'Signed out' };
   }
 
 }
 
-module.exports = new AuthService();
+module.exports = (req) => new AuthService(req);

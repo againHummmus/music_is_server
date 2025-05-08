@@ -1,10 +1,8 @@
-const { createClient } = require("@supabase/supabase-js");
-
+const {supabase} = require('../utils/supabase')
 class GenreService {
-  constructor() {
-    this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+  constructor(req) {
+    this.supabase = supabase(req);
   }
-
   async createGenre({ name }) {
     const { data, error } = await this.supabase
       .from("Genre")
@@ -36,4 +34,4 @@ class GenreService {
   
 }
 
-module.exports = new GenreService();
+module.exports = (req) => new GenreService(req);

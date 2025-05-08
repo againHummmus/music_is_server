@@ -7,7 +7,7 @@ class artistController extends Controller {
         try {
             const { name, userId } = req.body;
             const { image } = req.files;
-            const artist = await artistService.createArtist({ name, image, userId });
+            const artist = await artistService(req).createArtist({ name, image, userId });
             return res.json(artist);
         } catch (error) {
             console.error(error);
@@ -20,7 +20,7 @@ class artistController extends Controller {
             const { name, limit, offset } = req.query;
             const parsedLimit = limit ? parseInt(limit) : 10;
             const parsedOffset = offset ? parseInt(offset) : 0;
-            const artists = await artistService.searchArtists({
+            const artists = await artistService(req).searchArtists({
                 name: name || '',
                 limit: parsedLimit,
                 offset: parsedOffset,
