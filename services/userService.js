@@ -4,15 +4,14 @@ const tokenService = require("./tokenService");
 const { supabase } = require('../utils/supabase')
 const { supabaseAdmin } = require('../utils/supabase')
 const uuid = require("uuid");
+const adminService = require("./adminService");
 
 class AuthService {
   constructor(req) {
     this.supabase = supabase(req);
   }
-  async signUp({ email, password, username, avatar }) {
-    let authUser, userProfile, user, playlists;
-    const fileName = uuid.v4() + '.jpg';
-
+  async signUp({ email, password, username }) {
+    let authUser, user;
     try {
       const { data: au, error: ae } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -20,67 +19,41 @@ class AuthService {
         email_confirm: true,
         user_metadata: { username },
       });
-      if (ae) throw new Error('Error creating auth user: ' + ae.message);
+      if (ae) throw new Error("Error creating auth user: " + ae.message);
       authUser = au;
 
       const hashed = await bcrypt.hash(password, 10);
+
       const { data: u, error: ue } = await supabaseAdmin
-        .from('User')
+        .from("User")
         .insert({
-          id: authUser.id,
+          id: authUser.user.id,
+          sbUserId: authUser.user.id,
           email,
           username,
           password_hash: hashed,
-          profile_id: userProfile.id,
-          avatar_url: avatar ? fileName : null
         })
-        .select('*, Artist(*)')
+        .select()
         .single();
-      if (ue) throw new Error('Error creating user record: ' + ue.message);
+      if (ue) throw new Error("Error creating user record: " + ue.message);
       user = u;
 
-      if (avatar) {
-        const { error: ie } = await supabaseAdmin
-          .storage
-          .from('musicIsStorage/img')
-          .upload(fileName, avatar.data, { contentType: avatar.mimetype });
-        if (ie) throw new Error('Error uploading avatar: ' + ie.message);
-      }
+      await adminService.createDefaultPlaylistsForUser(user.id);
 
-      const playlistInserts = [
-        { name: 'Favourite', Creator: user.id, description: 'Your favorite tracks', is_public: false, is_default: true },
-        { name: 'Added by me', Creator: user.id, description: "Tracks where you're the author", is_public: false, is_default: true },
-        { name: 'Recommendations', Creator: user.id, description: 'Tracks you may like', is_public: false, is_default: true },
-        { name: 'Your friends like this', Creator: user.id, description: 'Tracks your friends listen to', is_public: false, is_default: true },
-      ];
-      const { data: pls, error: ple } = await supabaseAdmin
-        .from('Playlist')
-        .insert(playlistInserts)
-        .select();
-      if (ple) throw new Error('Error creating playlists: ' + ple.message);
-      playlists = pls;
+      const { data: sd, error: se } = await this.supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (se) throw new Error("Error signing in after signup: " + se.message);
 
-      const recs = playlists.find(pl => pl.name === 'Recommendations');
-      await this.fillRecommendations({ playlistId: recs.id });
-
-      const { data: sd, error: se } = await this.supabase.auth.signInWithPassword({ email, password });
-      if (se) throw new Error('Error signing in after signup: ' + se.message);
-
-      return { user, userProfile, session: sd.session };
+      return { user, session: sd.session };
 
     } catch (err) {
-      if (playlists) {
-        const ids = playlists.map(pl => pl.id);
-        await supabaseAdmin.from('Playlist').delete().in('id', ids).catch(() => { });
-      }
       if (user) {
-        await supabaseAdmin.from('User').delete().eq('id', user.id).catch(() => { });
+        await supabaseAdmin.from("User").delete().eq("id", user.id);
       }
       if (authUser) {
-        await supabaseAdmin.auth.admin.deleteUser(authUser.id).catch(() => { });
-        if (avatar) {
-          await supabaseAdmin.storage.from('musicIsStorage/img').remove([fileName]).catch(() => { });
-        }
+        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       }
       throw err;
     }
@@ -188,26 +161,103 @@ class AuthService {
     return { message: "Account activated successfully" };
   }
 
-  async signOut(refresh_token) {
-    const token = await tokenService.removeToken(refresh_token);
-    return token;
-  }
 
   async getUser(id) {
     const user = await this.supabase
       .from('User')
-      .select('*, Artist(*)')
+      .select('*, Artist(*), User_playlist(*, Playlist(*, Creator(*), Playlist_track(*, Track(*, Album(*)))))')
       .eq('id', id)
       .single();
     return user;
   }
 
-  async signOut() {
-    await this.supabase.auth.signOut();
-    await supabaseAdmin.auth.admin.disableUser((await this.supabase.auth.getUser()).data.user.id);
-    return { message: 'Signed out' };
+  async searchUsers({
+    username,
+    app_role,
+    artist_id,
+    limit = 10,
+    offset = 0,
+  }) {
+    let query = this.supabase
+      .from('User')
+      .select(`
+        *,
+        Artist(*),
+        User_playlist(
+          *,
+          Playlist(
+            *,
+            Creator(*),
+            Playlist_track(
+              *,
+              Track(
+                *,
+                Album(*)
+              )
+            )
+          )
+        )
+      `);
+
+    if (username) {
+      query = query.ilike('username', `${username}%`);
+    }
+    if (app_role) {
+      query = query.eq('app_role', app_role);
+    }
+    if (artist_id) {
+      query = query.eq('artistId', artist_id);
+    }
+
+    const { data, error } = await query.range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error('Error searching users: ' + error.message);
+    }
+    return data;
   }
 
+  async updateUser({ id, newUsername, avatar }) {
+    if (newUsername) {
+      const { data: existing, error: dupErr } = await this.supabase
+        .from('User')
+        .select('id')
+        .eq('username', newUsername)
+        .maybeSingle();
+      if (dupErr) throw new Error('Error checking username uniqueness: ' + dupErr.message);
+      if (existing && existing.id !== id) {
+        throw new Error('Username already taken');
+      }
+    }
+
+    const avatarFileName = uuid.v4() + '.jpg';
+
+    if (avatar) {
+      console.log(avatarFileName)
+      const { error: uploadErr } = await supabaseAdmin
+        .storage
+        .from('musicIsStorage/img')
+        .upload(avatarFileName, avatar.data, { contentType: avatar.mimetype, upsert: true });
+      if (uploadErr) {
+        throw new Error('Error uploading avatar: ' + uploadErr.message);
+      }
+    }
+
+    const updates = {};
+    if (newUsername) updates.username = newUsername;
+    if (avatarFileName) updates.avatar_url = avatarFileName;
+
+    const { data: updatedUser, error: updErr } = await this.supabase
+      .from('User')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (updErr) {
+      throw new Error('Error updating user: ' + updErr.message);
+    }
+    return updatedUser;
+  }
 }
 
 module.exports = (req) => new AuthService(req);

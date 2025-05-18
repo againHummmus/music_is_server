@@ -12,8 +12,7 @@ class userController {
         return next(ErrorMiddleware.badRequest('validation error', errors.array()));
       }
       const { email, password, username } = req.body;
-      const { avatar } = req.files;
-      const userData = await authService(req).signUp({ email, password, username, avatar });
+      const userData = await authService(req).signUp({ email, password, username });
       res.cookie('refresh_token', userData.session.refresh_token, { 
         maxAge: 30 * 24 * 60 * 60 * 1000, 
         httpOnly: true,
@@ -58,13 +57,11 @@ class userController {
 
   async signOut(req, res, next) {
     try {
-      const { refresh_token } = req.cookies;
-      const token = await authService(req).signOut(refresh_token);
       res.clearCookie('refresh_token');
       res.clearCookie('access_token');
-      return res.json(token);
+      return res.json({ message: 'success' });
     } catch (error) {
-      return next(ErrorMiddleware.internal(error.message));
+      return;
     }
   }
 
@@ -103,6 +100,34 @@ class userController {
     }
   }
 
+  async searchUsers(req, res, next) {
+    try {
+      const {
+        username,
+        app_role,
+        artist_id: artistIdRaw,
+        limit: limitRaw,
+        offset: offsetRaw
+      } = req.query;
+
+      const artist_id = artistIdRaw ? parseInt(artistIdRaw, 10) : undefined;
+      const limit = limitRaw ? parseInt(limitRaw, 10) : undefined;
+      const offset = offsetRaw ? parseInt(offsetRaw, 10) : undefined;
+      const users = await authService(req).searchUsers({
+        username,
+        app_role,
+        artist_id,
+        limit,
+        offset
+      });
+
+      return res.json(users);
+    } catch (err) {
+      return next(ErrorMiddleware.internal(err.message));
+    }
+  }
+
+
   async me(req, res, next) {
     try {
       const { access_token } = req.cookies;
@@ -136,6 +161,25 @@ class userController {
       return next(ErrorMiddleware.internal(error.message));
     }
   }
+
+  async updateUser(req, res, next) {
+    try {
+      const service = authService(req);
+      const { userId, newUsername } = req.body;
+      const avatar = req.files?.avatar; 
+
+      const updated = await service.updateUser({
+        id: userId,
+        newUsername,
+        avatar,
+      });
+
+      return res.json(updated);
+    } catch (err) {
+      return next(ErrorMiddleware.internal(err.message));
+    }
+  }
 }
+
 
 module.exports = new userController();

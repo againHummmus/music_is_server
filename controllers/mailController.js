@@ -7,7 +7,7 @@ class mailController extends Controller {
   async sendActivationLink(req, res, next) {
     try {
       const { email } = req.body; 
-      await mailService.sendActivationLink(email);
+      await mailService(req).sendActivationLink(email);
       return res.json({ message: "Activation link sent successfully" });
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
@@ -17,7 +17,7 @@ class mailController extends Controller {
   async resetPassword(req, res, next) {
     try {
       const { email } = req.body;
-      const result = await mailService.resetPassword({ email });
+      const result = await mailService(req).resetPassword({ email });
       return res.json(result);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
