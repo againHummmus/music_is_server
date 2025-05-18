@@ -49,6 +49,10 @@ class userController {
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,
       });
+      console.log({ 
+        sameSite: is_prod ? 'none' : 'lax',
+        secure: is_prod,
+      })
       return res.json(userData);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
