@@ -13,8 +13,15 @@ const postLikeRoutes = require('./postLikeRoutes')
 const playlistLikeRoutes = require('./playlistLikeRoutes')
 const trackLikeRoutes = require('./trackLikeRoutes')
 const userPlaylistRoutes = require('./userPlaylistRoutes')
+const userSubscriptionRoutes = require('./userSubscriptionRoutes');
+const postRoutes = require('./postRoutes');
+const recommendationRoutes = require('./recommendationRoutes');
+
+
 const AuthMiddleware = require('../middlewares/authMiddleware')
 
+
+router.use('/user-subscription', AuthMiddleware, userSubscriptionRoutes);
 router.use('/album', AuthMiddleware, albumRoutes)
 router.use('/artist', AuthMiddleware, artistRoutes)
 router.use('/genre', AuthMiddleware, genreRoutes)
@@ -27,6 +34,7 @@ router.use('/post-like', AuthMiddleware, postLikeRoutes)
 router.use('/playlist-like', AuthMiddleware, playlistLikeRoutes)  
 router.use('/track-like', AuthMiddleware, trackLikeRoutes)
 router.use('/user-playlist', AuthMiddleware, userPlaylistRoutes)
-
+router.use('/post', postRoutes);
+router.use('/recommendations', recommendationRoutes);
 
 module.exports = router

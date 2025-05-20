@@ -27,7 +27,6 @@ class AuthService {
       const { data: u, error: ue } = await supabaseAdmin
         .from("User")
         .insert({
-          id: authUser.user.id,
           sbUserId: authUser.user.id,
           email,
           username,
