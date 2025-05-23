@@ -1,6 +1,4 @@
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const tokenService = require("./tokenService");
 const { supabase } = require('../utils/supabase')
 const { supabaseAdmin } = require('../utils/supabase')
 const uuid = require("uuid");
@@ -93,6 +91,7 @@ class AuthService {
 
   async refresh(refresh_token) {
     const { data, error } = await supabaseAdmin.auth.refreshSession({ refresh_token });
+    console.log(data)
     const { data: user, error: userError } = await supabaseAdmin
       .from("User")
       .select('*, Artist(*)')
@@ -197,7 +196,6 @@ class AuthService {
           )
         )
       `);
-
     if (username) {
       query = query.ilike('username', `${username}%`);
     }

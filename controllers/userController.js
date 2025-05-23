@@ -13,14 +13,13 @@ class userController {
       }
       const { email, password, username } = req.body;
       const userData = await authService(req).signUp({ email, password, username });
-      res.cookie('refresh_token', userData.session.refresh_token, { 
-        maxAge: 30 * 24 * 60 * 60 * 1000, 
+      res.cookie('refresh_token', userData.session.refresh_token, {  
         httpOnly: true,
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,
       });
       res.cookie('access_token', userData.session.access_token, { 
-        maxAge: 30 * 60 * 1000, 
+        maxAge: 60 * 60 * 1000, 
         httpOnly: true,
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,
@@ -38,21 +37,16 @@ class userController {
       const { email, password } = req.body;
       const userData = await authService(req).signIn({ res, email, password });
       res.cookie('refresh_token', userData.session.refresh_token, { 
-        maxAge: 30 * 24 * 60 * 60 * 1000, 
         httpOnly: true,
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,
       });
       res.cookie('access_token', userData.session.access_token, { 
-        maxAge: 30 * 60 * 1000, 
+        maxAge: 60 * 60 * 1000, 
         httpOnly: true,
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,
       });
-      console.log({ 
-        sameSite: is_prod ? 'none' : 'lax',
-        secure: is_prod,
-      })
       return res.json(userData);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
@@ -77,13 +71,12 @@ class userController {
       if (!refresh_token) return next(ErrorMiddleware.forbidden('no token provided'));
       const userData = await authService(req).refresh(refresh_token);
       res.cookie('refresh_token', userData.session.refresh_token, { 
-        maxAge: 30 * 24 * 60 * 60 * 1000, 
         httpOnly: true,
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,
       });
       res.cookie('access_token', userData.session.access_token, { 
-        maxAge: 30 * 60 * 1000, 
+        maxAge: 60 * 60 * 1000, 
         httpOnly: true,
         sameSite: is_prod ? 'none' : 'lax',
         secure: is_prod,

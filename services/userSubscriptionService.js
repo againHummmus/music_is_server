@@ -30,7 +30,7 @@ class UserSubscriptionService {
   async searchSubscriptions({ follower, followee, limit = 10, offset = 0 }) {
     let query = this.supabase
       .from('User_user_subscription')
-      .select('*');
+      .select('*, Follower(*), Followee(*)');
 
     if (follower) {
       query = query.eq('Follower', follower);

@@ -47,7 +47,7 @@ class PlaylistService {
       query = query.eq("id", id);
     }
     if (name) {
-      query = query.eq("name", name);
+      query = query.ilike("name", `%${name}%`);
     }
     if (creatorId) {
       query = query.eq("Creator", creatorId);

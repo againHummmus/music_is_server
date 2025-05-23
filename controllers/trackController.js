@@ -25,7 +25,7 @@ class trackController extends Controller {
 
     async search(req, res, next) {
         try {
-            const { id, genre, artist, album, likedByUserId, name, limit, offset } = req.query;
+            const { id, genre, artist, album, likedByUserId, name, limit, offset, sortByLikes } = req.query;
             const parsedLimit = limit ? parseInt(limit) : 10;
             const parsedOffset = offset ? parseInt(offset) : 0;
             
@@ -38,6 +38,7 @@ class trackController extends Controller {
                 name: name || undefined,
                 limit: parsedLimit,
                 offset: parsedOffset,
+                sortByLikes: sortByLikes,
             });
             return res.json(tracks);
         } catch (error) {

@@ -3,7 +3,7 @@ const router = new Router()
 const genreController = require('../controllers/genreController')
 const AdminMiddleware = require('../middlewares/adminMiddleware');
 
-router.post('/', AdminMiddleware, genreController.create)
+router.post('/',  genreController.create)
 router.get('/', genreController.searchGenres)
 
 

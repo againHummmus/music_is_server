@@ -1,5 +1,5 @@
 const uuid = require("uuid");
-const {supabase} = require('../utils/supabase')
+const { supabase } = require('../utils/supabase')
 
 class TrackService {
   constructor(req) {
@@ -23,18 +23,17 @@ class TrackService {
         { genreId, artistId, albumId, name, file_hash: fileStorageName, lyrics, isAddedByUser }
       ])
       .select();
-
-    if (isAddedByUser) {
+    if (isAddedByUser === true) {
       const { data: artist, error: artistError } = await this.supabase
-    .from("Artist")
-    .select("*, User(*)")
-    .eq("id", artistId)
-    .maybeSingle();
-
+        .from("Artist")
+        .select("*, User(*)")
+        .eq("id", artistId)
+        .maybeSingle();
+      console.log('artist', artist)
       if (artistError) {
         throw new Error("Error fetching artist: " + artistError.message);
       }
-      if (artist?.User) {
+      if (artist?.User.length > 0) {
 
         const { data: playlist, error: playlistError } = await this.supabase
           .from("Playlist")
@@ -70,34 +69,47 @@ class TrackService {
     return data[0];
   }
 
-  async searchTracks({ id, genre, artist, album, likedByUserId, name, limit = 10, offset = 0 }) {
-    let query = this.supabase.from("Track").select("*, Artist(*), Album(*), Genre(*), Track_like(*)");
-  
-    if (id) {
-      query = query.eq("id", id);
+  async searchTracks({
+    id,
+    genre,
+    artist,
+    album,
+    likedByUserId,
+    name,
+    limit,
+    offset,
+    sortByLikes = false,
+  }) {
+    let query;
+
+    if (sortByLikes) {
+      query = this.supabase
+        .from('track_with_like_count')
+        .select('*, Artist(*), Album(*), Genre(*)')
+        .order('likes_count_last_day', { ascending: false });
+    } else {
+      query = this.supabase
+        .from('Track')
+        .select('*, Artist(*), Album(*), Genre(*), Track_like(*)');
     }
-    if (genre) {
-      query = query.eq("genreId", genre);
-    }
-    if (artist) {
-      query = query.eq("artistId", artist);
-    }
-    if (album) {
-      query = query.eq("albumId", album);
-    }
-    if (name) {
-      query = query.ilike("name", `%${name}%`);
-    }
+
+    if (id) query = query.eq('id', id);
+    if (genre) query = query.eq('genreId', genre);
+    if (artist) query = query.eq('artistId', artist);
+    if (album) query = query.eq('albumId', album);
+    if (name) query = query.ilike('name', `%${name}%`);
     if (likedByUserId) {
-      query = query.select("*, Artist(*), Album(*), Genre(*), Track_like!inner(*)");
-      query = query.eq("Track_like.userId", likedByUserId);
+      query = query
+        .select('*, Artist(*), Album(*), Genre(*), Track_like!inner(*)')
+        .eq('Track_like.userId', likedByUserId);
     }
-  
-    const { data: tracks, error: tracksError } = await query.range(offset, offset + limit - 1);
-    if (tracksError) {
-      throw new Error("Error searching tracks: " + tracksError.message);
+
+    const { data, error } = await query.range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error('Error searching tracks: ' + error.message);
     }
-    return tracks;
+    return data;
   }
 }
 
