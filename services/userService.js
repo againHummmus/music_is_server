@@ -63,7 +63,7 @@ class AuthService {
     })
 
     if (!!error) {
-      throw new Error('Invalid login credentials');
+      throw new Error('Invalid login credentials', error);
     }
 
     const { data: user } = await supabaseAdmin
