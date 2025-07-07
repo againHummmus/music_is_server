@@ -17,7 +17,7 @@ class AuthService {
         email_confirm: true,
         user_metadata: { username },
       });
-      if (ae) throw new Error("Error creating auth user: " + ae.message);
+      if (ae) throw new Error(ae.message);
       authUser = au;
 
       const hashed = await bcrypt.hash(password, 10);
@@ -32,7 +32,7 @@ class AuthService {
         })
         .select()
         .single();
-      if (ue) throw new Error("Error creating user record: " + ue.message);
+      if (ue) throw new Error("Error creating user record", ue);
       user = u;
 
       await adminService.createDefaultPlaylistsForUser(user.id);
@@ -41,7 +41,7 @@ class AuthService {
         email,
         password,
       });
-      if (se) throw new Error("Error signing in after signup: " + se.message);
+      if (se) throw new Error("Error signing in after signup");
 
       return { user, session: sd.session };
 
@@ -61,15 +61,18 @@ class AuthService {
       email,
       password
     })
+
+    if (!!error) {
+      throw new Error('Invalid login credentials');
+    }
+
     const { data: user } = await supabaseAdmin
       .from('User')
       .select('*, Artist(*)')
       .eq('sbUserId', data.user.id)
       .single();
 
-    if (!!error) {
-      throw new Error('Sign-in failed: ' + error);
-    }
+
     return { user, session: data.session };
   }
 
@@ -91,7 +94,6 @@ class AuthService {
 
   async refresh(refresh_token) {
     const { data, error } = await supabaseAdmin.auth.refreshSession({ refresh_token });
-    console.log(data)
     const { data: user, error: userError } = await supabaseAdmin
       .from("User")
       .select('*, Artist(*)')
@@ -230,7 +232,6 @@ class AuthService {
     const avatarFileName = uuid.v4() + '.jpg';
 
     if (avatar) {
-      console.log(avatarFileName)
       const { error: uploadErr } = await supabaseAdmin
         .storage
         .from('musicIsStorage/img')

@@ -70,7 +70,7 @@ class AdminService {
 
   async fillRecommendations({ playlistId }) {
     const { data: tracks } = await supabaseAdmin
-        .from('track_with_like_count')
+        .from('track_with_like_count_last_day')
         .select('*, Artist(*), Album(*), Genre(*)')
         .order('likes_count_last_day', { ascending: false });
 

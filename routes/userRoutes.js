@@ -4,7 +4,7 @@ const userController = require('../controllers/userController')
 const { body } = require('express-validator')
 const authMiddleware = require('../middlewares/authMiddleware')
 
-router.post('/signup', body('email').isEmail(), body('password').isLength({ min: 4 }), userController.signUp)
+router.post('/signup', body('email').isEmail(), userController.signUp)
 router.post('/signin', userController.signIn)
 router.post('/signout', userController.signOut)
 router.get('/', userController.searchUsers);

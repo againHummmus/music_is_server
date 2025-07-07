@@ -3,7 +3,6 @@ const postLikeService = require("../services/postLikeService");
 const Controller = require("./controller");
 
 class PostLikeController extends Controller {
-
   async create(req, res, next) {
     try {
       const { userId, postId } = req.body;
@@ -24,6 +23,16 @@ class PostLikeController extends Controller {
         offset: offset ? parseInt(offset, 10) : 0,
       });
       return res.json(postLikes);
+    } catch (error) {
+      return next(ErrorMiddleware.internal(error.message));
+    }
+  }
+
+  async delete(req, res, next) {
+    try {
+      const { userId, postId } = req.params;
+      const deletedPostLike = await postLikeService(req).deletePostLike({ userId, postId });
+      return res.json(deletedPostLike);
     } catch (error) {
       return next(ErrorMiddleware.internal(error.message));
     }

@@ -42,7 +42,7 @@ class PlaylistService {
     offset = 0,
   }) {
 
-    let query = this.supabase.from("Playlist").select('*, "Creator"(*), Playlist_track(*, Track(*, Album(*), Artist(*), Track_like(*)))');
+    let query = this.supabase.from("Playlist").select('*, "Creator"(*), "User_playlist"(*), "Playlist_track" (*, Track(*, Album(*), Artist(*, User(*)), Track_like(*), Playlist_track(*)))');
     if (id) {
       query = query.eq("id", id);
     }

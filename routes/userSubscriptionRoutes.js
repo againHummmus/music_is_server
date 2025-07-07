@@ -5,5 +5,6 @@ const userSubscriptionController = require('../controllers/userSubscriptionContr
 router.post('/',    userSubscriptionController.create);
 router.get('/',     userSubscriptionController.search);
 router.delete('/:id', userSubscriptionController.delete);
+router.get('/mutual-friends', userSubscriptionController.searchMutualFriends);
 
 module.exports = router;

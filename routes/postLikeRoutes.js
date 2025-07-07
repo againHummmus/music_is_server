@@ -1,9 +1,9 @@
 const Router = require("express");
 const router = new Router();
 const postLikeController = require("../controllers/postLikeController");
-const AdminMiddleware = require("../middlewares/adminMiddleware");
 
-router.post("/", AdminMiddleware, postLikeController.create);
+router.post("/", postLikeController.create);
 router.get("/", postLikeController.search);
+router.delete("/:userId/:postId", postLikeController.delete);
 
 module.exports = router;

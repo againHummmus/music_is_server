@@ -41,15 +41,6 @@ class playlistController extends Controller {
         limit: limitRaw,
         offset: offsetRaw,
       } = req.query;
-      console.log({
-        id,
-        name,
-        creatorId,
-        isPublic,
-        isDefault,
-        limit: limitRaw,
-        offset: offsetRaw,
-      })
       const playlists = await playlistService(req).searchPlaylists({
         id,
         name,

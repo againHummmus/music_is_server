@@ -24,7 +24,7 @@ class PostService {
     }
 
     async searchPosts({ id, trackId, playlistId, userId, limit = 10, offset = 0 }) {
-        let query = this.supabase.from('Post').select('*');
+        let query = this.supabase.from('Post').select('*, Post_like(*)');
         if (id) query = query.eq('id', id);
         if (trackId) query = query.eq('trackId', trackId);
         if (playlistId) query = query.eq('playlistId', playlistId);

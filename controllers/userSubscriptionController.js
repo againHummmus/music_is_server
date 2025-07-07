@@ -38,6 +38,34 @@ class UserSubscriptionController {
       return next(ErrorMiddleware.internal(err.message));
     }
   }
+
+  async searchMutualFriends(req, res, next) {
+    try {
+      const userId = req.query.userId || req.user?.id;
+
+      if (!userId) {
+        return next(ErrorMiddleware.badRequest('User ID is required to search mutual friends.'));
+      }
+
+      const { limit: lim, offset: off } = req.query;
+      const limit = lim ? parseInt(lim, 10) : undefined;
+      const offset = off ? parseInt(off, 10) : undefined;
+      const getPosts = req.query.getPosts === 'true';
+      const getPlaylists = req.query.getPlaylists === 'true';
+
+      const data = await UserSubscriptionService(req).searchMutualFriends({
+        userId,
+        limit,
+        offset,
+        getPosts,
+        getPlaylists
+      });
+      return res.json(data);
+    } catch (err) {
+      console.error('Error in UserSubscriptionController.searchMutualFriends:', err.message);
+      return next(ErrorMiddleware.internal(err.message));
+    }
+  }
 }
 
 module.exports = new UserSubscriptionController();

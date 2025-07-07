@@ -9,7 +9,7 @@ class userController {
       const is_prod = process.env.IS_PRODUCTION === 'true';
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return next(ErrorMiddleware.badRequest('validation error', errors.array()));
+        return next(ErrorMiddleware.badRequest('email validation error', errors.array()));
       }
       const { email, password, username } = req.body;
       const userData = await authService(req).signUp({ email, password, username });
@@ -49,6 +49,7 @@ class userController {
       });
       return res.json(userData);
     } catch (error) {
+      console.log(error)
       return next(ErrorMiddleware.internal(error.message));
     }
   }

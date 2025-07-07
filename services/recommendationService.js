@@ -15,7 +15,6 @@ class RecommendationService {
     const { data: userRecs, error: rpcUsersErr } = await supabaseAdmin
       .rpc('get_recommended_users', { current_user_id: userId });
     if (rpcUsersErr) throw new Error('RPC get_recommended_users failed: ' + rpcUsersErr.message);
-
     const { error: delUsersErr } = await supabaseAdmin
       .from('User_recommendation')
       .delete()
@@ -101,7 +100,6 @@ async regenerateFriendsLikeThisForUser(userId) {
         .select('*, Artist(*), Album(*), Genre(*)')
         .order('likes_count_last_day', { ascending: false });
     if (rpcErr) throw new Error('RPC get_recommended_tracks failed: ' + rpcErr.message);
-    console.log('trackRecs', trackRecs)
     await supabaseAdmin
       .from('Playlist_track')
       .delete()

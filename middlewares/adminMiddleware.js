@@ -11,7 +11,6 @@ const AdminMiddleware = async function (req, res, next) {
             return next(ErrorMiddleware.unauthorized("Unauthorized"))
         }
         const user = tokenService.validateaccess_token(token)
-        console.log(user)
         if (user.app_role !== "admin") {
             return next(ErrorMiddleware.forbidden("Access denied"))
         }

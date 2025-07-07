@@ -16,7 +16,8 @@ const userPlaylistRoutes = require('./userPlaylistRoutes')
 const userSubscriptionRoutes = require('./userSubscriptionRoutes');
 const postRoutes = require('./postRoutes');
 const recommendationRoutes = require('./recommendationRoutes');
-
+const messageRoutes = require('./messageRoutes');
+const dialogueRoutes = require('./dialogueRoutes');
 
 const AuthMiddleware = require('../middlewares/authMiddleware')
 
@@ -36,5 +37,7 @@ router.use('/track-like', AuthMiddleware, trackLikeRoutes)
 router.use('/user-playlist', AuthMiddleware, userPlaylistRoutes)
 router.use('/post', postRoutes);
 router.use('/recommendations', recommendationRoutes);
+router.use('/messages', AuthMiddleware, messageRoutes);
+router.use('/dialogues', AuthMiddleware, dialogueRoutes);
 
 module.exports = router

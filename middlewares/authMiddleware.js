@@ -14,7 +14,6 @@ const AuthMiddleware = async function (req, res, next) {
         const user = tokenService.validateaccess_token(token);
         if (!user) {
             console.error("no user!")
-
             return next(ErrorMiddleware.unauthorized("Unauthorized - no user"));
         }
         req.user = user;

@@ -47,7 +47,7 @@ async createUserPlaylist({ userId, playlistId, is_creator }) {
         Playlist!inner(
           *,
           Creator(*),
-          Playlist_track(*, Track(*, Album(*)))
+          Playlist_track(*, Track(*, Album(*), Artist(*)))
         )
       `);
   
