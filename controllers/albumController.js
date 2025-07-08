@@ -18,10 +18,11 @@ class albumController extends Controller {
 
     async searchAlbums(req, res, next) {
         try {
-            const { name, artistId, limit, offset } = req.query;
+            const { id, name, artistId, limit, offset } = req.query;
             const parsedLimit = limit ? parseInt(limit) : 10;
             const parsedOffset = offset ? parseInt(offset) : 0;
             const albums = await albumService(req).searchAlbums({
+                id: id,
                 name: name || '',
                 artistId: artistId || '',
                 limit: parsedLimit,

@@ -38,8 +38,12 @@ class AlbumService {
     return data;
   }
 
-  async searchAlbums({ name, artistId, limit = 10, offset = 0 }) {
-    let albumQuery = this.supabase.from("Album").select("*");
+  async searchAlbums({ id, name, artistId, limit = 10, offset = 0 }) {
+    let albumQuery = this.supabase.from("Album").select("*, Track(*, Album(*), Artist(*, User(*)), Track_like(*), Playlist_track(*)))");
+
+    if (id) {
+      albumQuery = albumQuery.eq("id", id);
+    }
 
     if (name) {
       albumQuery = albumQuery.ilike("name", `%${name}%`);
